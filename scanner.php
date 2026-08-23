@@ -42,7 +42,7 @@ require_once __DIR__ . '/includes/header.php';
     <div class="max-w-2xl mx-auto text-center space-y-4">
       <div class="flex items-center justify-center space-x-2 text-slate-500 text-sm font-semibold">
         <i data-lucide="barcode" class="w-5 h-5 text-brand-600"></i>
-        <span>VONALKÓD BEOLVASÁSA (Kézi szkenner vagy billentyűzet)</span>
+        <span>VONALKÓD BEOLVASÁSA VAGY KÉZI KIVÁLASZTÁS</span>
       </div>
 
       <div class="relative">
@@ -58,6 +58,14 @@ require_once __DIR__ . '/includes/header.php';
       <div id="camera-container" class="hidden max-w-md mx-auto overflow-hidden rounded-2xl border-2 border-slate-300 shadow-md">
         <div id="qr-reader" style="width: 100%;"></div>
         <button id="close-camera-btn" class="w-full py-2 bg-slate-800 text-white text-xs font-bold">Kamera bezárása</button>
+      </div>
+
+      <!-- Kézi Kiválasztás Gomb -->
+      <div class="pt-2 flex flex-wrap items-center justify-center gap-3">
+        <button type="button" id="btnOpenManualSelectModal" class="px-5 py-2.5 bg-slate-900 hover:bg-slate-800 text-white font-semibold text-xs rounded-xl shadow-xs transition-all flex items-center space-x-2">
+          <i data-lucide="list-plus" class="w-4 h-4 text-brand-400"></i>
+          <span>📋 Munkaruhák Kiválasztása Listából (Kézi rögzítés)</span>
+        </button>
       </div>
 
       <div class="flex items-center justify-center space-x-6 text-xs text-slate-400 font-medium pt-1">
@@ -76,7 +84,7 @@ require_once __DIR__ . '/includes/header.php';
           <h2 class="text-base font-bold text-slate-900">Aktuális Beolvasott Csomag</h2>
           <span id="current-batch-number" class="px-2 py-0.5 text-xs font-mono font-semibold bg-slate-200 text-slate-800 rounded"></span>
         </div>
-        <p class="text-xs text-slate-500 mt-0.5">A most beolvasott munkaruhák listája</p>
+        <p class="text-xs text-slate-500 mt-0.5">A most rögzített munkaruhák listája</p>
       </div>
 
       <div class="flex items-center space-x-3">
@@ -110,7 +118,7 @@ require_once __DIR__ . '/includes/header.php';
         <tbody id="session-items-table" class="divide-y divide-slate-100 bg-white">
           <tr>
             <td colspan="8" class="px-6 py-8 text-center text-slate-400">
-              Még nincs beolvasott ruha ebben a munkamenetben. Használja a vonalkód olvasót!
+              Még nincs beolvasott ruha ebben a munkamenetben. Használja a vonalkód olvasót vagy a kézi kiválasztót!
             </td>
           </tr>
         </tbody>
@@ -119,6 +127,78 @@ require_once __DIR__ . '/includes/header.php';
   </div>
 </div>
 
+<!-- KÉZI RUHA KIVÁLASZTÓ MODÁL -->
+<div id="manual-select-modal" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/70 backdrop-blur-xs hidden p-4">
+  <div class="bg-white rounded-2xl shadow-2xl border border-slate-200 max-w-4xl w-full max-h-[90vh] flex flex-col overflow-hidden">
+    <div class="p-6 border-b border-slate-100 flex items-center justify-between">
+      <div class="flex items-center space-x-3">
+        <div class="p-2.5 bg-brand-50 text-brand-600 rounded-xl"><i data-lucide="list-plus" class="w-5 h-5"></i></div>
+        <div>
+          <h3 class="text-lg font-bold text-slate-900">Munkaruhák Kézi Kiválasztása a Csomaghoz</h3>
+          <p class="text-xs text-slate-500" id="manual-modal-direction-hint">Jelölje be a mosodába küldendő munkaruhákat</p>
+        </div>
+      </div>
+      <button id="btnCloseManualModal" class="p-2 text-slate-400 hover:text-slate-600 rounded-lg"><i data-lucide="x" class="w-5 h-5"></i></button>
+    </div>
+
+    <!-- Kereső és szűrősáv -->
+    <div class="p-4 bg-slate-50 border-b border-slate-200 grid grid-cols-1 sm:grid-cols-3 gap-3">
+      <div class="sm:col-span-2 relative">
+        <i data-lucide="search" class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
+        <input type="text" id="manual-search-input" placeholder="Keresés dolgozó neve, ruha megnevezése, méret vagy kód..."
+          class="w-full pl-9 pr-3 py-2 text-xs bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-500 focus:outline-none">
+      </div>
+      <div>
+        <select id="manual-category-filter" class="w-full py-2 px-3 text-xs bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-500">
+          <option value="">Összes kategória</option>
+          <option value="Póló">Póló</option>
+          <option value="Köpeny">Köpeny</option>
+          <option value="Nadrág">Nadrág</option>
+          <option value="Kazak">Kazak</option>
+          <option value="Egyéb">Egyéb</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Ruha lista táblázat -->
+    <div class="flex-1 overflow-y-auto p-4">
+      <table class="min-w-full divide-y divide-slate-200 text-xs">
+        <thead class="bg-slate-50 text-slate-600 font-bold uppercase sticky top-0 bg-slate-50">
+          <tr>
+            <th class="py-2.5 px-3 w-10 text-center">
+              <input type="checkbox" id="manual-select-all" class="w-4 h-4 text-brand-600 rounded border-slate-300">
+            </th>
+            <th class="py-2.5 px-3 text-left">Dolgozó / Cikkszám</th>
+            <th class="py-2.5 px-3 text-left">Megnevezés</th>
+            <th class="py-2.5 px-3 text-left">Kategória / Szín</th>
+            <th class="py-2.5 px-3 text-left">Méret</th>
+            <th class="py-2.5 px-3 text-left">Vonalkód</th>
+            <th class="py-2.5 px-3 text-left">Telephely</th>
+          </tr>
+        </thead>
+        <tbody id="manual-clothes-table-body" class="divide-y divide-slate-100 bg-white">
+          <tr><td colspan="7" class="py-8 text-center text-slate-400">Ruhák betöltése...</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Lábléc & Akciógomb -->
+    <div class="p-4 bg-slate-50 border-t border-slate-200 flex items-center justify-between">
+      <div class="text-xs text-slate-600">
+        Kijelölve: <b id="manual-selected-count" class="text-brand-600 font-black">0</b> db ruha
+      </div>
+      <div class="flex items-center space-x-3">
+        <button type="button" id="btnCancelManualSelect" class="px-4 py-2 text-slate-600 hover:bg-slate-200 rounded-xl text-xs font-semibold">Mégse</button>
+        <button type="button" id="btnAddSelectedToBatch" class="px-5 py-2.5 bg-brand-600 hover:bg-brand-700 text-white font-bold text-xs rounded-xl shadow-sm transition-all flex items-center space-x-1.5">
+          <i data-lucide="plus-circle" class="w-4 h-4"></i>
+          <span>Kijelöltek Hozzáadása a Csomaghoz</span>
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- NYOMTATHATÓ SZÁLLÍTÓLEVÉL MODÁL -->
 <div id="batch-modal" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/70 backdrop-blur-xs hidden p-4 overflow-y-auto">
   <div class="bg-white rounded-2xl shadow-2xl border border-slate-200 max-w-3xl w-full p-8 space-y-6 my-auto">
     <div id="printable-area" class="space-y-6 text-slate-800">
@@ -158,48 +238,55 @@ require_once __DIR__ . '/includes/header.php';
             <th class="py-2 px-3">Vonalkód</th>
             <th class="py-2 px-3">Megnevezés</th>
             <th class="py-2 px-3">Méret</th>
-            <th class="py-2 px-3">Dolgozó Neve (Törzsszám)</th>
+            <th class="py-2 px-3">Dolgozó / Tartalék</th>
           </tr>
         </thead>
-        <tbody id="print-items-tbody" class="divide-y divide-slate-200"></tbody>
+        <tbody id="print-items-body" class="divide-y divide-slate-200 font-mono"></tbody>
       </table>
 
-      <div class="grid grid-cols-2 gap-12 pt-8 text-xs border-t border-slate-200">
-        <div class="text-center">
-          <div class="border-b border-slate-400 pb-8"></div>
-          <p class="mt-2 font-bold text-slate-700">Átadó (HGA Biomed képviselője)</p>
+      <div class="grid grid-cols-2 gap-12 pt-12 border-t border-slate-200 text-center text-xs">
+        <div>
+          <div class="border-b border-slate-400 pb-1 mb-2"></div>
+          <p class="font-bold text-slate-800">Átadó (HGA Biomed Kft.)</p>
         </div>
-        <div class="text-center">
-          <div class="border-b border-slate-400 pb-8"></div>
-          <p class="mt-2 font-bold text-slate-700">Átvevő (Mosoda képviselője / Futár)</p>
+        <div>
+          <div class="border-b border-slate-400 pb-1 mb-2"></div>
+          <p class="font-bold text-slate-800">Átvevő (Mosoda)</p>
         </div>
       </div>
     </div>
 
-    <div class="flex justify-end space-x-3 pt-4 border-t border-slate-100">
-      <button id="close-batch-modal-btn" class="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-xl text-sm font-semibold">Bezárás</button>
-      <button onclick="window.print()" class="px-5 py-2 bg-slate-900 hover:bg-slate-800 text-white text-sm font-bold rounded-xl transition-all flex items-center space-x-2 shadow-sm">
+    <div class="flex justify-end space-x-3 pt-4 border-t border-slate-100 print:hidden">
+      <button id="close-print-modal-btn" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-semibold rounded-xl">Bezárás</button>
+      <button onclick="window.print()" class="px-5 py-2 bg-brand-600 hover:bg-brand-700 text-white text-sm font-bold rounded-xl shadow-md flex items-center space-x-1.5">
         <i data-lucide="printer" class="w-4 h-4"></i>
-        <span>Nyomtatás</span>
+        <span>Jegyzék Nyomtatása</span>
       </button>
     </div>
   </div>
 </div>
 
+<script src="js/audio.js"></script>
 <script>
-let scanMode = 'OUT';
+let currentMode = 'OUT';
 let currentBatch = null;
 let sessionItems = [];
-let html5QrCode = null;
+let availableClothesCache = [];
 
 const barcodeInput = document.getElementById('barcode-input');
 const modeOutBtn = document.getElementById('scan-mode-out');
 const modeInBtn = document.getElementById('scan-mode-in');
 const badgeOut = document.getElementById('badge-mode-out');
 const badgeIn = document.getElementById('badge-mode-in');
+const sessionCountEl = document.getElementById('session-count');
+const batchNumberEl = document.getElementById('current-batch-number');
+const sessionTableBody = document.getElementById('session-items-table');
+const categorySummaryEl = document.getElementById('batch-category-summary');
+const feedbackEl = document.getElementById('scan-feedback');
 
+// 1. Módváltás
 modeOutBtn.addEventListener('click', () => {
-  scanMode = 'OUT';
+  currentMode = 'OUT';
   modeOutBtn.className = 'p-5 rounded-2xl border-3 border-brand-600 bg-brand-50/80 shadow-md text-left transition-all relative overflow-hidden group';
   modeInBtn.className = 'p-5 rounded-2xl border-2 border-slate-200 bg-white hover:border-slate-300 shadow-xs text-left transition-all relative overflow-hidden group';
   badgeOut.classList.remove('hidden');
@@ -208,7 +295,7 @@ modeOutBtn.addEventListener('click', () => {
 });
 
 modeInBtn.addEventListener('click', () => {
-  scanMode = 'IN';
+  currentMode = 'IN';
   modeInBtn.className = 'p-5 rounded-2xl border-3 border-blue-600 bg-blue-50/80 shadow-md text-left transition-all relative overflow-hidden group';
   modeOutBtn.className = 'p-5 rounded-2xl border-2 border-slate-200 bg-white hover:border-slate-300 shadow-xs text-left transition-all relative overflow-hidden group';
   badgeIn.classList.remove('hidden');
@@ -216,20 +303,18 @@ modeInBtn.addEventListener('click', () => {
   barcodeInput.focus();
 });
 
+// 2. Vonalkód olvasás
 barcodeInput.addEventListener('keydown', async (e) => {
   if (e.key === 'Enter') {
     e.preventDefault();
     const code = barcodeInput.value.trim();
     if (!code) return;
     barcodeInput.value = '';
-    await processBarcode(code);
+    await processScan(code);
   }
 });
 
-async function processBarcode(barcode) {
-  const feedbackEl = document.getElementById('scan-feedback');
-  feedbackEl.classList.remove('hidden');
-
+async function processScan(barcode) {
   try {
     const res = await fetch('ajax_scanner.php', {
       method: 'POST',
@@ -237,177 +322,315 @@ async function processBarcode(barcode) {
       body: JSON.stringify({
         action: 'scan',
         barcode: barcode,
-        direction: scanMode,
-        location_id: '<?php echo $activeLocationId; ?>',
-        batch_id: currentBatch ? currentBatch.id : null
+        direction: currentMode,
+        batch_id: currentBatch ? currentBatch.id : null,
+        location_id: '<?php echo getActiveLocationId(); ?>'
       })
     });
     const data = await res.json();
 
-    if (data.already_scanned) {
-      window.sounds.playWarning();
-      feedbackEl.className = 'mt-6 p-4 rounded-2xl text-center font-bold text-base bg-amber-100 text-amber-900 border border-amber-300 shadow-sm';
-      feedbackEl.innerHTML = `⚠️ ${data.message}`;
-      barcodeInput.focus();
-      return;
+    if (data.sound === 'success') SoundEffects.playSuccess();
+    else if (data.sound === 'warning') SoundEffects.playWarning();
+    else if (data.sound === 'error') SoundEffects.playError();
+
+    showFeedback(data.message, data.success ? 'success' : (data.already_scanned ? 'warning' : 'error'));
+
+    if (data.success && data.cloth) {
+      currentBatch = data.batch;
+      sessionItems.unshift({
+        scanned_at: new Date().toLocaleTimeString('hu-HU'),
+        barcode: data.cloth.barcode,
+        cloth_name: data.cloth.name,
+        category: data.cloth.category,
+        color: data.cloth.color,
+        size: data.cloth.size,
+        employee_name: data.cloth.employee_name,
+        location_short: data.cloth.location_short,
+        status: (currentMode === 'OUT') ? 'Mosásba küldve' : 'Visszavéve'
+      });
+      updateSessionTable();
     }
-
-    if (!data.success) {
-      window.sounds.playError();
-      feedbackEl.className = 'mt-6 p-4 rounded-2xl text-center font-bold text-base bg-red-100 text-red-900 border border-red-300 shadow-sm';
-      feedbackEl.innerHTML = `❌ ${data.message}`;
-      barcodeInput.focus();
-      return;
-    }
-
-    window.sounds.playSuccess();
-    currentBatch = data.batch;
-    sessionItems.unshift({
-      time: new Date().toLocaleTimeString('hu-HU'),
-      cloth: data.cloth,
-      direction: scanMode
-    });
-
-    feedbackEl.className = 'mt-6 p-4 rounded-2xl text-center font-bold text-base bg-emerald-100 text-emerald-900 border border-emerald-300 shadow-sm';
-    const actionTxt = scanMode === 'OUT' ? 'MOSODÁBA ÁTADVA' : 'MOSODÁBÓL VISSZAVÉVE';
-    feedbackEl.innerHTML = `
-      <div class="flex items-center justify-center space-x-3">
-        <span class="p-1.5 rounded-full bg-emerald-600 text-white"><i data-lucide="check" class="w-5 h-5"></i></span>
-        <span>${data.cloth.name} [${data.cloth.barcode}] &bull; <strong>${data.cloth.employee_name || 'Tartalék'}</strong> &bull; <span class="text-emerald-700 font-extrabold uppercase">${actionTxt}</span></span>
-      </div>
-    `;
-    if (window.lucide) lucide.createIcons();
-    updateSessionUi();
   } catch (err) {
-    window.sounds.playError();
-    feedbackEl.className = 'mt-6 p-4 rounded-2xl text-center font-bold text-base bg-red-100 text-red-900 border border-red-300 shadow-sm';
-    feedbackEl.innerHTML = `❌ Hálózati hiba a beolvasáskor!`;
+    SoundEffects.playError();
+    showFeedback('Hálózati hiba a mentés során!', 'error');
   }
   barcodeInput.focus();
 }
 
-function updateSessionUi() {
-  document.getElementById('session-count').textContent = `${sessionItems.length} db`;
-  document.getElementById('current-batch-number').textContent = currentBatch ? currentBatch.batch_number : '';
+function updateSessionTable() {
+  sessionCountEl.textContent = `${sessionItems.length} db`;
+  batchNumberEl.textContent = currentBatch ? currentBatch.batch_number : '';
 
-  const catCounts = {};
-  sessionItems.forEach(item => {
-    const cat = item.cloth.category || 'Egyéb';
-    catCounts[cat] = (catCounts[cat] || 0) + 1;
-  });
-
-  document.getElementById('batch-category-summary').innerHTML = Object.entries(catCounts).map(([cat, count]) => `
-    <span class="px-2.5 py-1 bg-slate-100 border border-slate-200 rounded-lg">
-      ${cat}: <strong class="text-slate-900">${count} db</strong>
-    </span>
-  `).join('');
-
-  const tbody = document.getElementById('session-items-table');
   if (sessionItems.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="8" class="px-6 py-8 text-center text-slate-400">Még nincs beolvasott ruha.</td></tr>`;
+    sessionTableBody.innerHTML = '<tr><td colspan="8" class="px-6 py-8 text-center text-slate-400">Még nincs beolvasott ruha ebben a munkamenetben.</td></tr>';
+    categorySummaryEl.innerHTML = '';
     return;
   }
 
-  tbody.innerHTML = sessionItems.map(item => `
+  const cats = {};
+  sessionItems.forEach(i => {
+    cats[i.category] = (cats[i.category] || 0) + 1;
+  });
+
+  categorySummaryEl.innerHTML = Object.entries(cats).map(([cat, cnt]) => `
+    <span class="px-2.5 py-1 bg-slate-100 rounded-lg border border-slate-200">
+      ${cat}: <strong class="text-slate-900">${cnt} db</strong>
+    </span>
+  `).join('');
+
+  sessionTableBody.innerHTML = sessionItems.map(i => `
     <tr class="hover:bg-slate-50">
-      <td class="px-6 py-3 font-mono text-xs text-slate-500">${item.time}</td>
-      <td class="px-6 py-3 font-mono font-bold text-slate-900">${item.cloth.barcode}</td>
-      <td class="px-6 py-3 font-medium text-slate-900">${item.cloth.name}</td>
-      <td class="px-6 py-3 text-slate-600">${item.cloth.category} / ${item.cloth.color || '-'}</td>
-      <td class="px-6 py-3 font-mono text-slate-600">${item.cloth.size || '-'}</td>
-      <td class="px-6 py-3 font-medium text-slate-900">${item.cloth.employee_name || 'Tartalék'}</td>
-      <td class="px-6 py-3 text-slate-600">${item.cloth.location_short || '-'}</td>
+      <td class="px-6 py-3 font-mono text-xs text-slate-500">${i.scanned_at}</td>
+      <td class="px-6 py-3 font-mono font-bold text-slate-900">${i.barcode}</td>
+      <td class="px-6 py-3 font-medium text-slate-800">${i.cloth_name}</td>
+      <td class="px-6 py-3 text-slate-600">${i.category} / ${i.color}</td>
+      <td class="px-6 py-3 font-mono text-slate-600">${i.size || '-'}</td>
+      <td class="px-6 py-3 font-medium text-slate-900">${i.employee_name || 'Tartalék'}</td>
+      <td class="px-6 py-3 text-slate-600">${i.location_short || '-'}</td>
       <td class="px-6 py-3 text-right">
-        <span class="px-2.5 py-1 text-xs font-bold rounded-full ${item.direction === 'OUT' ? 'bg-amber-100 text-amber-800' : 'bg-emerald-100 text-emerald-800'}">
-          ${item.direction === 'OUT' ? 'Mosásba adva' : 'Visszavéve'}
+        <span class="px-2 py-0.5 text-xs font-bold rounded-full ${currentMode === 'OUT' ? 'bg-amber-100 text-amber-800' : 'bg-emerald-100 text-emerald-800'}">
+          ${i.status}
         </span>
       </td>
     </tr>
   `).join('');
+
+  if (window.lucide) lucide.createIcons();
 }
 
-document.getElementById('finish-batch-btn').addEventListener('click', async () => {
-  if (!currentBatch || sessionItems.length === 0) {
-    alert('Nincs lezárandó csomag!');
+function showFeedback(msg, type) {
+  feedbackEl.classList.remove('hidden', 'bg-emerald-100', 'text-emerald-900', 'bg-amber-100', 'text-amber-900', 'bg-red-100', 'text-red-900');
+  if (type === 'success') feedbackEl.classList.add('bg-emerald-100', 'text-emerald-900');
+  else if (type === 'warning') feedbackEl.classList.add('bg-amber-100', 'text-amber-900');
+  else feedbackEl.classList.add('bg-red-100', 'text-red-900');
+
+  feedbackEl.textContent = msg;
+  setTimeout(() => feedbackEl.classList.add('hidden'), 4000);
+}
+
+// 3. KÉZI RUHA KIVÁLASZTÓ MODÁL LOGIKA
+const manualModal = document.getElementById('manual-select-modal');
+const btnOpenManualModal = document.getElementById('btnOpenManualSelectModal');
+const btnCloseManualModal = document.getElementById('btnCloseManualModal');
+const btnCancelManualSelect = document.getElementById('btnCancelManualSelect');
+const manualSearchInput = document.getElementById('manual-search-input');
+const manualCategoryFilter = document.getElementById('manual-category-filter');
+const manualTableBody = document.getElementById('manual-clothes-table-body');
+const manualSelectAll = document.getElementById('manual-select-all');
+const manualSelectedCount = document.getElementById('manual-selected-count');
+const btnAddSelectedToBatch = document.getElementById('btnAddSelectedToBatch');
+
+btnOpenManualModal.addEventListener('click', async () => {
+  manualModal.classList.remove('hidden');
+  document.getElementById('manual-modal-direction-hint').textContent = (currentMode === 'OUT') 
+    ? 'Jelölje be a MOSODÁBA KÜLDENDŐ (szennyes) munkaruhákat' 
+    : 'Jelölje be a MOSODÁBÓL VISSZAVÉTELREZENDŐ (tiszta) munkaruhákat';
+  await loadAvailableClothes();
+  manualSearchInput.focus();
+});
+
+[btnCloseManualModal, btnCancelManualSelect].forEach(btn => {
+  btn.addEventListener('click', () => manualModal.classList.add('hidden'));
+});
+
+async function loadAvailableClothes() {
+  manualTableBody.innerHTML = '<tr><td colspan="7" class="py-8 text-center text-slate-400">Ruhák betöltése...</td></tr>';
+  try {
+    const res = await fetch('ajax_scanner.php', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        action: 'get_available_clothes',
+        direction: currentMode,
+        location_id: '<?php echo getActiveLocationId(); ?>',
+        search: manualSearchInput.value.trim(),
+        category: manualCategoryFilter.value
+      })
+    });
+    const data = await res.json();
+    availableClothesCache = data.clothes || [];
+    renderManualTable();
+  } catch (err) {
+    manualTableBody.innerHTML = '<tr><td colspan="7" class="py-8 text-center text-red-500">Hiba a ruhák betöltésekor.</td></tr>';
+  }
+}
+
+function renderManualTable() {
+  if (availableClothesCache.length === 0) {
+    manualTableBody.innerHTML = '<tr><td colspan="7" class="py-8 text-center text-slate-400">Nincs a szűrésnek megfelelő munkaruha ebben a státuszban.</td></tr>';
+    updateManualSelectedCount();
     return;
   }
-  const res = await fetch('ajax_scanner.php', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ action: 'finish_batch', batch_id: currentBatch.id })
+
+  manualTableBody.innerHTML = availableClothesCache.map(c => `
+    <tr class="hover:bg-slate-50 cursor-pointer" onclick="toggleClothCheckbox(${c.id}, event)">
+      <td class="py-2.5 px-3 text-center" onclick="event.stopPropagation()">
+        <input type="checkbox" value="${c.id}" class="manual-cloth-cb w-4 h-4 text-brand-600 rounded border-slate-300">
+      </td>
+      <td class="py-2.5 px-3 font-medium text-slate-900">
+        <div>${c.employee_name || 'Tartalék'}</div>
+        <div class="text-[10px] text-slate-400 font-mono">${c.employee_code || c.item_code || ''}</div>
+      </td>
+      <td class="py-2.5 px-3 text-slate-800 font-medium">${c.name}</td>
+      <td class="py-2.5 px-3 text-slate-600">${c.category} / ${c.color || '-'}</td>
+      <td class="py-2.5 px-3 font-mono text-slate-700">${c.size || '-'}</td>
+      <td class="py-2.5 px-3 font-mono text-slate-500">${c.barcode}</td>
+      <td class="py-2.5 px-3 text-slate-600">${c.location_short || '-'}</td>
+    </tr>
+  `).join('');
+
+  document.querySelectorAll('.manual-cloth-cb').forEach(cb => {
+    cb.addEventListener('change', updateManualSelectedCount);
   });
-  const data = await res.json();
-  if (data.success) {
-    openDeliveryModal(currentBatch.id);
-    currentBatch = null;
-    sessionItems = [];
-    updateSessionUi();
+  updateManualSelectedCount();
+}
+
+function toggleClothCheckbox(id, event) {
+  const cb = document.querySelector(`.manual-cloth-cb[value="${id}"]`);
+  if (cb) {
+    cb.checked = !cb.checked;
+    updateManualSelectedCount();
+  }
+}
+
+manualSelectAll.addEventListener('change', () => {
+  const checked = manualSelectAll.checked;
+  document.querySelectorAll('.manual-cloth-cb').forEach(cb => cb.checked = checked);
+  updateManualSelectedCount();
+});
+
+function updateManualSelectedCount() {
+  const count = document.querySelectorAll('.manual-cloth-cb:checked').length;
+  manualSelectedCount.textContent = count;
+}
+
+manualSearchInput.addEventListener('input', () => {
+  clearTimeout(window._searchTimer);
+  window._searchTimer = setTimeout(loadAvailableClothes, 250);
+});
+
+manualCategoryFilter.addEventListener('change', loadAvailableClothes);
+
+// Kijelöltek hozzáadása a csomaghoz
+btnAddSelectedToBatch.addEventListener('click', async () => {
+  const selectedCbs = document.querySelectorAll('.manual-cloth-cb:checked');
+  const ids = Array.from(selectedCbs).map(cb => parseInt(cb.value));
+
+  if (ids.length === 0) {
+    alert('Kérjük jelöljön ki legalább egy munkaruhát!');
+    return;
+  }
+
+  btnAddSelectedToBatch.disabled = true;
+  btnAddSelectedToBatch.innerHTML = '<span class="animate-spin">⏳</span> Hozzáadás folyamatban...';
+
+  try {
+    const res = await fetch('ajax_scanner.php', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        action: 'manual_add_items',
+        cloth_ids: ids,
+        direction: currentMode,
+        batch_id: currentBatch ? currentBatch.id : null,
+        location_id: '<?php echo getActiveLocationId(); ?>'
+      })
+    });
+    const data = await res.json();
+
+    if (data.success) {
+      SoundEffects.playSuccess();
+      currentBatch = data.batch;
+      sessionItems = (data.items || []).map(i => ({
+        scanned_at: new Date(i.scanned_at).toLocaleTimeString('hu-HU'),
+        barcode: i.barcode,
+        cloth_name: i.cloth_name,
+        category: i.category,
+        color: i.color,
+        size: i.size,
+        employee_name: i.employee_name,
+        location_short: i.location_short,
+        status: (currentMode === 'OUT') ? 'Mosásba küldve' : 'Visszavéve'
+      }));
+      updateSessionTable();
+      showFeedback(data.message, 'success');
+      manualModal.classList.add('hidden');
+    } else {
+      alert('Hiba: ' + data.message);
+    }
+  } catch (err) {
+    alert('Hálózati hiba a hozzáadás során: ' + err.message);
+  }
+
+  btnAddSelectedToBatch.disabled = false;
+  btnAddSelectedToBatch.innerHTML = '<i data-lucide="plus-circle" class="w-4 h-4 mr-1.5"></i><span>Kijelöltek Hozzáadása a Csomaghoz</span>';
+  if (window.lucide) lucide.createIcons();
+});
+
+// 4. Csomag lezárása & Szállítólevél
+document.getElementById('finish-batch-btn').addEventListener('click', async () => {
+  if (!currentBatch || sessionItems.length === 0) {
+    alert('Nincs lezárandó csomag! Előbb adjon hozzá munkaruhákat.');
+    return;
+  }
+
+  try {
+    const res = await fetch('ajax_scanner.php', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        action: 'finish_batch',
+        batch_id: currentBatch.id,
+        notes: ''
+      })
+    });
+    const data = await res.json();
+
+    if (data.success) {
+      showDeliveryNote(data.batch, data.items);
+      sessionItems = [];
+      currentBatch = null;
+      updateSessionTable();
+    }
+  } catch (err) {
+    alert('Hiba a lezárás során: ' + err.message);
   }
 });
 
-async function openDeliveryModal(batchId) {
-  const res = await fetch('ajax_scanner.php', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ action: 'get_batch_details', batch_id: batchId })
+function showDeliveryNote(batch, items) {
+  document.getElementById('print-batch-number').textContent = batch.batch_number;
+  document.getElementById('print-batch-date').textContent = new Date(batch.created_at).toLocaleString('hu-HU');
+  document.getElementById('print-location-name').textContent = batch.location_name || 'HGA Biomed';
+  document.getElementById('print-location-address').textContent = batch.location_address || '';
+  document.getElementById('print-user-name').textContent = batch.user_full_name || 'Kezelő';
+  document.getElementById('print-direction-label').textContent = (batch.direction === 'OUT') ? 'KIADÁS MOSODÁBA' : 'BEVÉTEL MOSÁSBÓL';
+  document.getElementById('print-total-count').textContent = `${items.length} db`;
+
+  const cats = {};
+  items.forEach(i => {
+    cats[i.category] = (cats[i.category] || 0) + 1;
   });
-  const data = await res.json();
-  if (!data.success) return;
 
-  const b = data.batch;
-  document.getElementById('print-batch-number').textContent = b.batch_number;
-  document.getElementById('print-batch-date').textContent = new Date(b.created_at).toLocaleString('hu-HU');
-  document.getElementById('print-location-name').textContent = b.location_name || 'HGA Biomed';
-  document.getElementById('print-location-address').textContent = b.location_address || '';
-  document.getElementById('print-user-name').textContent = b.user_name || '-';
-  document.getElementById('print-direction-label').textContent = b.direction === 'OUT' ? 'MOSODÁBA KÜLDVE (Tisztításra átadva)' : 'MOSODÁBÓL VISSZAVÉVE (Átvéve)';
-  document.getElementById('print-total-count').textContent = `${data.items.length} db`;
-
-  document.getElementById('print-category-breakdown').innerHTML = Object.entries(data.categoryCounts).map(([cat, c]) => `
-    <span class="px-2.5 py-1 bg-slate-100 border border-slate-300 rounded font-semibold text-slate-800">${cat}: ${c} db</span>
+  document.getElementById('print-category-breakdown').innerHTML = Object.entries(cats).map(([c, n]) => `
+    <span class="px-2 py-0.5 bg-slate-100 border border-slate-300 rounded font-semibold text-[11px]">${c}: <b>${n} db</b></span>
   `).join('');
 
-  document.getElementById('print-items-tbody').innerHTML = data.items.map((item, i) => `
+  document.getElementById('print-items-body').innerHTML = items.map((i, idx) => `
     <tr>
-      <td class="py-1.5 px-3 font-mono">${i + 1}.</td>
-      <td class="py-1.5 px-3 font-mono font-bold">${item.barcode}</td>
-      <td class="py-1.5 px-3 font-medium">${item.cloth_name} (${item.category} / ${item.color || '-'})</td>
-      <td class="py-1.5 px-3 font-mono">${item.size || '-'}</td>
-      <td class="py-1.5 px-3">${item.employee_name || 'Tartalék'} ${item.employee_code ? '(' + item.employee_code + ')' : ''}</td>
+      <td class="py-1.5 px-3 text-slate-500">${idx + 1}.</td>
+      <td class="py-1.5 px-3 font-bold">${i.barcode}</td>
+      <td class="py-1.5 px-3 font-sans">${i.cloth_name} (${i.category} / ${i.color || '-'})</td>
+      <td class="py-1.5 px-3 font-sans">${i.size || '-'}</td>
+      <td class="py-1.5 px-3 font-sans font-medium">${i.employee_name || 'Tartalék'}</td>
     </tr>
   `).join('');
 
   document.getElementById('batch-modal').classList.remove('hidden');
+  if (window.lucide) lucide.createIcons();
 }
 
-document.getElementById('close-batch-modal-btn').addEventListener('click', () => {
+document.getElementById('close-print-modal-btn').addEventListener('click', () => {
   document.getElementById('batch-modal').classList.add('hidden');
-});
-
-document.getElementById('camera-scan-btn').addEventListener('click', () => {
-  const container = document.getElementById('camera-container');
-  container.classList.remove('hidden');
-  if (!html5QrCode && window.Html5Qrcode) {
-    html5QrCode = new Html5Qrcode('qr-reader');
-  }
-  if (html5QrCode) {
-    html5QrCode.start({ facingMode: 'environment' }, { fps: 10, qrbox: { width: 250, height: 250 } }, (text) => {
-      processBarcode(text);
-    }).catch(e => {
-      alert('Kamera hiba: ' + e);
-      container.classList.add('hidden');
-    });
-  }
-});
-
-document.getElementById('close-camera-btn').addEventListener('click', () => {
-  if (html5QrCode) {
-    html5QrCode.stop().then(() => {
-      document.getElementById('camera-container').classList.add('hidden');
-    });
-  } else {
-    document.getElementById('camera-container').classList.add('hidden');
-  }
 });
 </script>
 
