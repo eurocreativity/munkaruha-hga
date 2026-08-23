@@ -2,6 +2,11 @@
 require_once __DIR__ . '/includes/auth_check.php';
 require_once __DIR__ . '/classes/Database.php';
 
+if (!canEdit()) {
+    setFlashMessage('danger', 'Megtekintő (Viewer) jogosultságú felhasználóval nem végezhető CSV exportálás!');
+    redirect('dashboard.php');
+}
+
 $db = Database::getInstance();
 $activeLoc = getActiveLocationId();
 

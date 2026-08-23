@@ -139,10 +139,12 @@ $companyLogo = $settingsObj->get('company_logo', '');
               <i data-lucide="clock" class="w-4 h-4"></i>
               <span>Mosásban lévők</span>
             </a>
-            <a href="csv_export.php" class="<?php echo navClass('csv_export.php', $currentPage); ?>">
-              <i data-lucide="file-spreadsheet" class="w-4 h-4"></i>
-              <span>Leltár CSV</span>
-            </a>
+            <?php if (canEdit()): ?>
+              <a href="csv_export.php" class="<?php echo navClass('csv_export.php', $currentPage); ?>">
+                <i data-lucide="file-spreadsheet" class="w-4 h-4"></i>
+                <span>Leltár CSV</span>
+              </a>
+            <?php endif; ?>
 
             <!-- KIZÁRÓLAG ADMIN JOGOSULTSÁGÚ MENÜPONTOK -->
             <?php if (isAdmin()): ?>
