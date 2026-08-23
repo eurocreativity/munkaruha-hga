@@ -1,6 +1,6 @@
 <?php
 /**
- * AJAX Frissítő & Biztonsági Mentés Végpont (ISPConfig & GitHub ZIP)
+ * AJAX Frissítő & Biztonsági Mentés Végpont (ISPConfig, Synology & GitHub)
  */
 header('Content-Type: application/json; charset=utf-8');
 
@@ -29,6 +29,7 @@ $token = defined('GITHUB_TOKEN') && !empty(GITHUB_TOKEN) ? GITHUB_TOKEN : $setti
 $versionFile = __DIR__ . '/version.txt';
 $localCommit = file_exists($versionFile) ? trim(file_get_contents($versionFile)) : '';
 
+// 1. Frissítés ellenőrzése a GitHub API-n
 if ($action === 'check_update') {
     $url = "https://api.github.com/repos/{$repo}/commits/main";
     $ch = curl_init($url);
@@ -45,27 +46,55 @@ if ($action === 'check_update') {
         $json = json_decode($res, true);
         $remoteSha = $json['sha'] ?? '';
         $msg = $json['commit']['message'] ?? '';
-        $updateAvailable = (!empty($remoteSha) && $remoteSha !== $localCommit);
+        $author = $json['commit']['author']['name'] ?? '';
+        $date = $json['commit']['author']['date'] ?? '';
+        $updateAvailable = (!empty($remoteSha) && strpos($localCommit, substr($remoteSha, 0, 8)) === false && $remoteSha !== $localCommit);
 
         echo json_encode([
             'success' => true,
             'update_available' => $updateAvailable,
             'local_commit' => $localCommit ?: '1.0.0',
             'remote_commit' => $remoteSha,
-            'commit_message' => $msg
+            'commit_message' => $msg,
+            'commit_date' => $date,
+            'author' => $author
         ]);
     } else {
         echo json_encode([
             'success' => true,
             'update_available' => false,
             'local_commit' => $localCommit ?: '1.0.0',
-            'message' => 'Nem érhető el új verzió vagy privát repo token szükséges.'
+            'message' => 'A GitHub API nem adott vissza újabb verziót, vagy privát repo token szükséges.'
         ]);
     }
     exit();
 }
 
+// 2. Frissítés letöltése és alkalmazása (Git pull vagy ZIP)
 if ($action === 'apply_update') {
+    // Ha van helyi .git mappa és futtatható a git parancs, először megpróbáljuk a natív git pull-t
+    $isGitPulled = false;
+    if (is_dir(__DIR__ . '/.git') && function_exists('shell_exec')) {
+        $disabled = ini_get('disable_functions');
+        if (empty($disabled) || strpos($disabled, 'shell_exec') === false) {
+            try {
+                $gitOutput = @shell_exec('git pull origin main 2>&1');
+                if ($gitOutput && (strpos($gitOutput, 'Updating') !== false || strpos($gitOutput, 'Already up to date') !== false)) {
+                    $isGitPulled = true;
+                    $headSha = @shell_exec('git rev-parse HEAD');
+                    if ($headSha) {
+                        file_put_contents($versionFile, trim($headSha));
+                    }
+                    echo json_encode(['success' => true, 'method' => 'git_pull', 'message' => 'Sikeres frissítés Git-en keresztül!']);
+                    exit();
+                }
+            } catch (Exception $e) {
+                // Fallback to ZIP download
+            }
+        }
+    }
+
+    // ZIP alapú letöltés (ISPConfig / Synology Web Station alatt a legmegbízhatóbb)
     $zipUrl = "https://api.github.com/repos/{$repo}/zipball/main";
     $zipFile = __DIR__ . '/backups/update_temp.zip';
 
@@ -75,7 +104,7 @@ if ($action === 'apply_update') {
 
     $ch = curl_init($zipUrl);
     $fp = fopen($zipFile, 'w+');
-    curl_setopt($ch, CURLOPT_TIMEOUT, 60);
+    curl_setopt($ch, CURLOPT_TIMEOUT, 90);
     curl_setopt($ch, CURLOPT_FILE, $fp);
     curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
     curl_setopt($ch, CURLOPT_USERAGENT, 'HGA-Munkaruha-Updater');
@@ -98,10 +127,17 @@ if ($action === 'apply_update') {
             if (!empty($dirs)) {
                 $source = $dirs[0] . '/';
                 $dest = __DIR__ . '/';
-                $iterator = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($source, RecursiveDirectoryIterator::SKIP_DOTS), RecursiveIteratorIterator::SELF_FIRST);
+                $iterator = new RecursiveIteratorIterator(
+                    new RecursiveDirectoryIterator($source, RecursiveDirectoryIterator::SKIP_DOTS),
+                    RecursiveIteratorIterator::SELF_FIRST
+                );
                 foreach ($iterator as $item) {
                     $target = $dest . $iterator->getSubPathName();
+                    // Soha ne írjuk felül a helyi titkokat és a backups mappát
                     if (basename($target) === 'config.local.php') continue;
+                    if (strpos($iterator->getSubPathName(), 'backups/') === 0) continue;
+                    if (strpos($iterator->getSubPathName(), 'logs/') === 0) continue;
+
                     if ($item->isDir()) {
                         if (!is_dir($target)) mkdir($target, 0755, true);
                     } else {
@@ -111,7 +147,17 @@ if ($action === 'apply_update') {
             }
 
             @unlink($zipFile);
-            echo json_encode(['success' => true, 'message' => 'Frissítés sikeresen telepítve!']);
+            // Kicsomagolt ideiglenes mappa törlése
+            array_map('unlink', glob("$extractPath/*.*"));
+            @rmdir($extractPath);
+
+            // Verzió frissítése
+            $remoteSha = $_POST['remote_commit'] ?? '';
+            if ($remoteSha) {
+                file_put_contents($versionFile, trim($remoteSha));
+            }
+
+            echo json_encode(['success' => true, 'method' => 'zip_download', 'message' => 'Frissítés sikeresen telepítve!']);
             exit();
         }
     }
@@ -120,6 +166,7 @@ if ($action === 'apply_update') {
     exit();
 }
 
+// 3. Biztonsági mentés generálása
 if ($action === 'download_backup') {
     $db = Database::getInstance();
     $pdo = $db->getConnection();
