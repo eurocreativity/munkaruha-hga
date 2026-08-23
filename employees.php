@@ -6,6 +6,10 @@ $db = Database::getInstance();
 $activeLoc = getActiveLocationId();
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    if (!canEdit()) {
+        setFlashMessage('danger', 'Megtekintő (Viewer) jogosultságú felhasználóval nem rögzíthető új dolgozó!');
+        redirect('employees.php');
+    }
     $csrf = $_POST['csrf_token'] ?? '';
     if (validateCsrfToken($csrf)) {
         $code = trim($_POST['employee_code'] ?? '');
@@ -53,6 +57,8 @@ $employees = $db->fetchAll("
     ORDER BY e.is_reserve ASC, e.last_name ASC
 ", $params);
 
+$locations = $db->fetchAll("SELECT * FROM locations ORDER BY id ASC");
+
 require_once __DIR__ . '/includes/header.php';
 ?>
 
@@ -68,10 +74,12 @@ require_once __DIR__ . '/includes/header.php';
         <input type="text" name="search" value="<?php echo escape($search); ?>" placeholder="Keresés név, törzsszám..."
           class="pl-9 pr-3 py-2 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-500 focus:bg-white focus:outline-none">
       </form>
-      <button onclick="document.getElementById('emp-modal').classList.remove('hidden')" class="px-4 py-2 bg-brand-600 hover:bg-brand-700 text-white font-semibold text-sm rounded-xl transition-all flex items-center space-x-2 shadow-sm">
-        <i data-lucide="user-plus" class="w-4 h-4"></i>
-        <span>Új Dolgozó</span>
-      </button>
+      <?php if (canEdit()): ?>
+        <button onclick="document.getElementById('emp-modal').classList.remove('hidden')" class="px-4 py-2 bg-brand-600 hover:bg-brand-700 text-white font-semibold text-sm rounded-xl transition-all flex items-center space-x-2 shadow-sm">
+          <i data-lucide="user-plus" class="w-4 h-4"></i>
+          <span>Új Dolgozó</span>
+        </button>
+      <?php endif; ?>
     </div>
   </div>
 
@@ -100,6 +108,7 @@ require_once __DIR__ . '/includes/header.php';
   </div>
 </div>
 
+<?php if (canEdit()): ?>
 <div id="emp-modal" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs hidden">
   <div class="bg-white rounded-2xl shadow-2xl border border-slate-200 max-w-md w-full p-6 space-y-4">
     <div class="flex items-center justify-between border-b border-slate-100 pb-3">
@@ -119,22 +128,22 @@ require_once __DIR__ . '/includes/header.php';
           <input type="text" name="last_name" required class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-500">
         </div>
         <div>
-          <label class="block text-xs font-bold text-slate-600 mb-1">Keresztnév</label>
-          <input type="text" name="first_name" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-500">
+          <label class="block text-xs font-bold text-slate-600 mb-1">Keresztnév *</label>
+          <input type="text" name="first_name" required class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-500">
         </div>
       </div>
       <div>
-        <label class="block text-xs font-bold text-slate-600 mb-1">Telephely *</label>
-        <select name="location_id" required class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl">
-          <option value="1">1 - Jutai út 50.</option>
-          <option value="2">2 - Nagygát u. 1.</option>
+        <label class="block text-xs font-bold text-slate-600 mb-1">Telephely</label>
+        <select name="location_id" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl">
+          <?php foreach ($locations as $loc): ?>
+            <option value="<?php echo $loc['id']; ?>"><?php echo escape($loc['code'] . ' - ' . ($loc['short_name'] ?: $loc['name'])); ?></option>
+          <?php endforeach; ?>
         </select>
       </div>
       <div>
-        <label class="block text-xs font-bold text-slate-600 mb-1">Szekrény / Fakk szám</label>
-        <input type="text" name="locker_number" placeholder="pl. A/12" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl">
+        <label class="block text-xs font-bold text-slate-600 mb-1">Szekrény Szám (Opcionális)</label>
+        <input type="text" name="locker_number" placeholder="pl. SZ-14" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl">
       </div>
-
       <div class="pt-4 flex justify-end space-x-3 border-t border-slate-100">
         <button type="button" onclick="document.getElementById('emp-modal').classList.add('hidden')" class="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-xl">Mégse</button>
         <button type="submit" class="px-5 py-2 bg-brand-600 hover:bg-brand-700 text-white font-bold rounded-xl shadow-sm">Mentés</button>
@@ -142,5 +151,6 @@ require_once __DIR__ . '/includes/header.php';
     </form>
   </div>
 </div>
+<?php endif; ?>
 
 <?php require_once __DIR__ . '/includes/footer.php'; ?>

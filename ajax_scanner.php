@@ -10,8 +10,14 @@ if (!isLoggedIn()) {
     exit();
 }
 
-$data = json_decode(file_get_contents('php://input'), true) ?: $_POST;
-$action = $data['action'] ?? 'scan';
+$data = json_decode(file_get_contents('php://input'), true) ?? [];
+$action = $data['action'] ?? ($_POST['action'] ?? '');
+
+$modifyingActions = ['scan', 'manual_add_items', 'remove_item_from_batch', 'cancel_batch', 'complete_batch'];
+if (in_array($action, $modifyingActions) && !canEdit()) {
+    echo json_encode(['success' => false, 'message' => 'Megtekintő (Viewer) jogosultságú fiókkal nem hajtható végre módosítás!']);
+    exit();
+}
 
 $db = Database::getInstance();
 $currentUser = getCurrentUser();

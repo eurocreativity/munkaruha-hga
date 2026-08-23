@@ -8,6 +8,10 @@ $activeLoc = getActiveLocationId();
 
 // Új ruha / Módosítás mentése szigorú logikai integritással
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    if (!canEdit()) {
+        setFlashMessage('danger', 'Megtekintő (Viewer) jogosultságú felhasználóval nem végezhető módosítás!');
+        redirect('clothes.php');
+    }
     $action = $_POST['form_action'] ?? '';
     $csrf = $_POST['csrf_token'] ?? '';
     
@@ -147,10 +151,12 @@ require_once __DIR__ . '/includes/header.php';
         <h2 class="text-xl font-bold text-slate-900">Munkaruhák Nyilvántartása</h2>
         <p class="text-xs text-slate-500">Keresés, szűrés, dolgozókhoz rendelés és leltárkövetés</p>
       </div>
-      <button onclick="openClothModal()" class="px-4 py-2.5 bg-brand-600 hover:bg-brand-700 text-white font-semibold text-sm rounded-xl transition-all flex items-center space-x-2 shadow-sm">
-        <i data-lucide="plus" class="w-4 h-4"></i>
-        <span>Új Ruha Hozzáadása</span>
-      </button>
+      <?php if (canEdit()): ?>
+        <button onclick="openClothModal()" class="px-4 py-2.5 bg-brand-600 hover:bg-brand-700 text-white font-semibold text-sm rounded-xl transition-all flex items-center space-x-2 shadow-sm">
+          <i data-lucide="plus" class="w-4 h-4"></i>
+          <span>Új Ruha Hozzáadása</span>
+        </button>
+      <?php endif; ?>
     </div>
 
     <!-- Szűrők -->
@@ -253,9 +259,15 @@ require_once __DIR__ . '/includes/header.php';
                   <?php endif; ?>
                 </td>
                 <td class="px-6 py-3.5 text-right">
-                  <button onclick='editCloth(<?php echo json_encode($c); ?>)' class="p-1.5 text-slate-500 hover:text-brand-600 hover:bg-brand-50 rounded-lg transition-all" title="Szerkesztés">
-                    <i data-lucide="edit-3" class="w-4 h-4"></i>
-                  </button>
+                  <?php if (canEdit()): ?>
+                    <button onclick='editCloth(<?php echo json_encode($c); ?>)' class="p-1.5 text-slate-500 hover:text-brand-600 hover:bg-brand-50 rounded-lg transition-all" title="Szerkesztés">
+                      <i data-lucide="edit-3" class="w-4 h-4"></i>
+                    </button>
+                  <?php else: ?>
+                    <button onclick='viewCloth(<?php echo json_encode($c); ?>)' class="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-all" title="Adatlap megtekintése">
+                      <i data-lucide="eye" class="w-4 h-4"></i>
+                    </button>
+                  <?php endif; ?>
                 </td>
               </tr>
             <?php endforeach; ?>
@@ -429,7 +441,19 @@ function editCloth(c) {
   }
 
   document.getElementById('cloth-modal').classList.remove('hidden');
+  const subBtn = document.getElementById('cloth-modal-submit-btn');
+  if (subBtn) subBtn.classList.remove('hidden');
   if (window.lucide) lucide.createIcons();
+}
+
+function viewCloth(c) {
+  editCloth(c);
+  document.getElementById('cloth-modal-title').textContent = 'Munkaruha Adatlap (Megtekintés)';
+  setFieldsDisabled(true);
+  const notesField = document.getElementById('cloth-form-notes');
+  if (notesField) notesField.disabled = true;
+  const subBtn = document.getElementById('cloth-modal-submit-btn');
+  if (subBtn) subBtn.classList.add('hidden');
 }
 
 function handleEmployeeChange() {

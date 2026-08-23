@@ -128,6 +128,16 @@ function isAdmin() {
     return isset($_SESSION['role']) && $_SESSION['role'] === 'admin';
 }
 
+function canEdit() {
+    if (!isLoggedIn()) return false;
+    $role = $_SESSION['role'] ?? 'viewer';
+    return in_array($role, ['admin', 'operator']);
+}
+
+function isViewer() {
+    return isset($_SESSION['role']) && $_SESSION['role'] === 'viewer';
+}
+
 function getActiveLocationId() {
     if (isset($_GET['location_id']) && $_GET['location_id'] !== '') {
         $_SESSION['active_location_id'] = $_GET['location_id'];

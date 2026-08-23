@@ -6,6 +6,30 @@ require_once __DIR__ . '/includes/header.php';
 ?>
 
 <div class="space-y-6">
+  <?php if (!canEdit()): ?>
+    <div class="p-4 bg-amber-50 border border-amber-200 rounded-2xl flex items-center space-x-3 text-amber-900 text-sm font-medium shadow-xs">
+      <i data-lucide="shield-alert" class="w-5 h-5 text-amber-600 shrink-0"></i>
+      <span><strong>Csak Megtekintés:</strong> Az Ön fiókja (Megtekintő / Vezető) olvasási jogosultsággal rendelkezik. Vonalkód olvasást és csomagküldést kizárólag Operátor (Raktáros) és Rendszergazda végezhet.</span>
+    </div>
+    <script>
+      document.addEventListener('DOMContentLoaded', () => {
+        const input = document.getElementById('barcode-input');
+        if (input) {
+          input.disabled = true;
+          input.placeholder = 'Csak megtekintés (Olvasási mód)';
+        }
+        const manBtn = document.getElementById('btnOpenManualSelectModal');
+        if (manBtn) manBtn.classList.add('hidden');
+        const camBtn = document.getElementById('camera-scan-btn');
+        if (camBtn) camBtn.classList.add('hidden');
+        const cancelBtn = document.getElementById('btnCancelBatch');
+        if (cancelBtn) cancelBtn.classList.add('hidden');
+        const finishBtn = document.getElementById('finish-batch-btn');
+        if (finishBtn) finishBtn.classList.add('hidden');
+      });
+    </script>
+  <?php endif; ?>
+
   <!-- Módváltó gombok -->
   <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
     <button id="scan-mode-out" class="p-5 rounded-2xl border-3 border-brand-600 bg-brand-50/80 shadow-md text-left transition-all relative overflow-hidden group">
