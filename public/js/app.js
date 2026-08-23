@@ -55,11 +55,12 @@ function setLoggedInUser(user) {
   const roleNames = { admin: 'Adminisztrátor', operator: 'Operátor (Raktár)', viewer: 'Megtekintő (Vezető)' };
   document.getElementById('user-display-role').textContent = roleNames[user.role] || user.role;
 
-  // Admin fül elrejtése nem-adminoknak
-  const adminTab = document.getElementById('admin-nav-tab');
-  if (adminTab) {
-    adminTab.style.display = (user.role === 'admin') ? 'flex' : 'none';
-  }
+  // Admin fülek elrejtése nem-adminoknak
+  const isAdmin = (user.role === 'admin');
+  ['users-nav-tab', 'settings-nav-tab', 'update-nav-tab'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.style.display = isAdmin ? 'flex' : 'none';
+  });
 
   // Alapértelmezett telephely beállítása
   if (user.default_location_id) {
@@ -111,6 +112,33 @@ function setupEventListeners() {
       switchTab(tabName);
     });
   });
+
+  const checkUpdBtn = document.getElementById('spa-check-update-btn');
+  if (checkUpdBtn) {
+    checkUpdBtn.addEventListener('click', async () => {
+      const feedback = document.getElementById('spa-update-feedback');
+      feedback.classList.remove('hidden');
+      feedback.className = 'p-5 rounded-2xl border bg-blue-50 border-blue-200 text-blue-900 text-sm';
+      feedback.innerHTML = '<span class="animate-spin">⏳</span> Kapcsolódás a GitHubhoz...';
+      try {
+        const res = await fetch('https://api.github.com/repos/eurocreativity/munkaruha-hga/commits/main');
+        if (res.ok) {
+          const data = await res.json();
+          feedback.className = 'p-5 rounded-2xl border bg-emerald-50 border-emerald-200 text-emerald-900 text-sm space-y-2';
+          feedback.innerHTML = `
+            <div class="font-bold flex items-center space-x-2">
+              <span>✓ Legújabb GitHub commit elérve: <code>${data.sha.substring(0, 8)}</code></span>
+            </div>
+            <p class="text-xs text-emerald-800">Üzenet: ${data.commit.message}</p>
+            <p class="text-xs text-slate-500">Szerver: A rendszer éles környezetben (PHP/MySQL ISPConfig & Synology) automatikusan telepíti.</p>
+          `;
+        }
+      } catch (e) {
+        feedback.className = 'p-5 rounded-2xl border bg-amber-50 border-amber-200 text-amber-900 text-sm';
+        feedback.innerHTML = '⚠️ Nem sikerült elérni a GitHub API-t közvetlenül a böngészőből.';
+      }
+    });
+  }
 }
 
 // Tab váltás
@@ -165,11 +193,15 @@ function loadTabContent(tabName) {
     case 'in-laundry':
       loadInLaundry();
       break;
-    case 'admin':
+    case 'users':
       if (State.user && State.user.role === 'admin') {
         loadUsers();
         loadAuditLogs();
       }
+      break;
+    case 'settings':
+      break;
+    case 'update':
       break;
   }
 }
