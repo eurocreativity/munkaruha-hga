@@ -84,8 +84,13 @@ $companyLogo = $settingsObj->get('company_logo', '');
             </select>
           </div>
 
-          <!-- Profil & Kilépés -->
+          <!-- Súgó & Profil & Kilépés -->
           <div class="flex items-center space-x-3">
+            <button onclick="openInteractiveHelp()" title="Interaktív Rendszer Súgó" class="px-3 py-1.5 bg-slate-100 hover:bg-brand-50 hover:text-brand-700 text-slate-700 rounded-xl text-xs font-bold transition-all flex items-center space-x-1.5 border border-slate-200 shadow-2xs">
+              <i data-lucide="help-circle" class="w-4 h-4 text-brand-600"></i>
+              <span>Súgó</span>
+            </button>
+
             <?php if ($currentUser): ?>
               <a href="profile.php" class="text-right hidden sm:block hover:opacity-80 transition-opacity">
                 <p class="text-sm font-bold text-slate-800 leading-tight flex items-center justify-end space-x-1">
