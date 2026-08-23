@@ -1,0 +1,3 @@
+# Mentések mappájának közvetlen webes elérésének tiltása
+Order allow,deny
+Deny from all
