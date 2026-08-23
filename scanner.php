@@ -539,7 +539,7 @@ btnAddSelectedToBatch.addEventListener('click', async () => {
     const data = await res.json();
 
     if (data.success) {
-      SoundEffects.playSuccess();
+      try { if (window.SoundEffects) SoundEffects.playSuccess(); } catch(e){}
       currentBatch = data.batch;
       sessionItems = (data.items || []).map(i => ({
         scanned_at: new Date(i.scanned_at).toLocaleTimeString('hu-HU'),
