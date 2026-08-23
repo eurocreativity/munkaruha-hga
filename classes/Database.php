@@ -2,6 +2,7 @@
 class Database {
     private static $instance = null;
     private $pdo;
+    private static $migrated = false;
 
     private function __construct() {
         try {
@@ -13,6 +14,11 @@ class Database {
                 PDO::ATTR_EMULATE_PREPARES => false,
             ];
             $this->pdo = new PDO($dsn, DB_USER, DB_PASS, $options);
+            
+            if (!self::$migrated) {
+                $this->runAutoMigrations();
+                self::$migrated = true;
+            }
         } catch (PDOException $e) {
             error_log("Adatbázis kapcsolat hiba: " . $e->getMessage());
             die("Adatbázis kapcsolat hiba! Ellenőrizd a config.local.php beállításait és a MySQL szervert.");
@@ -75,5 +81,30 @@ class Database {
 
     public function rollback() {
         return $this->pdo->rollBack();
+    }
+
+    private function runAutoMigrations() {
+        try {
+            // Ellenőrizzük a users tábla oszlopait
+            $cols = $this->pdo->query("SHOW COLUMNS FROM users")->fetchAll(PDO::FETCH_COLUMN);
+            
+            if (!in_array('email', $cols)) {
+                $this->pdo->exec("ALTER TABLE users ADD COLUMN email VARCHAR(255) NULL AFTER full_name");
+            }
+            if (!in_array('email_verified', $cols)) {
+                $this->pdo->exec("ALTER TABLE users ADD COLUMN email_verified TINYINT(1) DEFAULT 1 AFTER active");
+            }
+            if (!in_array('reset_token_hash', $cols)) {
+                $this->pdo->exec("ALTER TABLE users ADD COLUMN reset_token_hash VARCHAR(255) NULL AFTER email_verified");
+            }
+            if (!in_array('reset_token_expires_at', $cols)) {
+                $this->pdo->exec("ALTER TABLE users ADD COLUMN reset_token_expires_at DATETIME NULL AFTER reset_token_hash");
+            }
+            if (!in_array('verification_token_hash', $cols)) {
+                $this->pdo->exec("ALTER TABLE users ADD COLUMN verification_token_hash VARCHAR(255) NULL AFTER reset_token_expires_at");
+            }
+        } catch (Exception $e) {
+            // Ha még nincs létrehozva a users tábla, ne okozzon hibát
+        }
     }
 }
