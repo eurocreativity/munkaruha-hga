@@ -5,8 +5,14 @@ require_once __DIR__ . '/classes/Database.php';
 $db = Database::getInstance();
 $activeLoc = getActiveLocationId();
 
+// Automatikusan töröljük az üres, 0 tételes nyitott csomagokat
+$db->execute("
+    DELETE FROM laundry_batches 
+    WHERE status = 'IN_PROGRESS' AND (item_count <= 0 OR id NOT IN (SELECT DISTINCT batch_id FROM laundry_items))
+");
+
 $dirFilter = $_GET['direction'] ?? '';
-$where = ["1=1"];
+$where = ["b.item_count > 0", "b.status != 'CANCELLED'"];
 $params = [];
 
 if ($activeLoc) {
@@ -58,7 +64,7 @@ require_once __DIR__ . '/includes/header.php';
             <th class="px-6 py-3.5">Létrehozva</th>
             <th class="px-6 py-3.5">Kezelő</th>
             <th class="px-6 py-3.5">Státusz</th>
-            <th class="px-6 py-3.5 text-right">Szállítólevél</th>
+            <th class="px-6 py-3.5 text-right">Műveletek</th>
           </tr>
         </thead>
         <tbody class="divide-y divide-slate-100 bg-white">
@@ -66,7 +72,7 @@ require_once __DIR__ . '/includes/header.php';
             <tr><td colspan="8" class="px-6 py-8 text-center text-slate-400">Még nincs rögzített mosodai csomag.</td></tr>
           <?php else: ?>
             <?php foreach ($batches as $b): ?>
-              <tr class="hover:bg-slate-50">
+              <tr class="hover:bg-slate-50" id="batch-row-<?php echo $b['id']; ?>">
                 <td class="px-6 py-3.5 font-mono font-bold text-slate-900"><?php echo escape($b['batch_number']); ?></td>
                 <td class="px-6 py-3.5">
                   <span class="px-2.5 py-1 text-xs font-bold rounded-full <?php echo $b['direction'] === 'OUT' ? 'bg-amber-100 text-amber-800' : 'bg-emerald-100 text-emerald-800'; ?>">
@@ -91,10 +97,17 @@ require_once __DIR__ . '/includes/header.php';
                       <span>Folytatás</span>
                     </a>
                   <?php endif; ?>
+                  
                   <button onclick="openDeliveryModal(<?php echo $b['id']; ?>)" class="px-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-xs font-semibold flex items-center space-x-1 shadow-xs">
                     <i data-lucide="file-text" class="w-3.5 h-3.5"></i>
                     <span>Átadóív / Nyomtatás</span>
                   </button>
+
+                  <?php if (isAdmin()): ?>
+                    <button onclick="cancelBatch(<?php echo $b['id']; ?>, '<?php echo escape($b['batch_number']); ?>')" class="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all" title="Csomag sztornózása / törlése">
+                      <i data-lucide="trash-2" class="w-4 h-4"></i>
+                    </button>
+                  <?php endif; ?>
                 </td>
               </tr>
             <?php endforeach; ?>
@@ -144,29 +157,29 @@ require_once __DIR__ . '/includes/header.php';
             <th class="py-2 px-3">Vonalkód</th>
             <th class="py-2 px-3">Megnevezés</th>
             <th class="py-2 px-3">Méret</th>
-            <th class="py-2 px-3">Dolgozó Neve (Törzsszám)</th>
+            <th class="py-2 px-3">Dolgozó / Tartalék</th>
           </tr>
         </thead>
-        <tbody id="print-items-tbody" class="divide-y divide-slate-200"></tbody>
+        <tbody id="print-items-body" class="divide-y divide-slate-200 font-mono"></tbody>
       </table>
 
-      <div class="grid grid-cols-2 gap-12 pt-8 text-xs border-t border-slate-200">
-        <div class="text-center">
-          <div class="border-b border-slate-400 pb-8"></div>
-          <p class="mt-2 font-bold text-slate-700">Átadó (HGA Biomed képviselője)</p>
+      <div class="grid grid-cols-2 gap-12 pt-12 border-t border-slate-200 text-center text-xs">
+        <div>
+          <div class="border-b border-slate-400 pb-1 mb-2"></div>
+          <p class="font-bold text-slate-800">Átadó (HGA Biomed Kft.)</p>
         </div>
-        <div class="text-center">
-          <div class="border-b border-slate-400 pb-8"></div>
-          <p class="mt-2 font-bold text-slate-700">Átvevő (Mosoda képviselője / Futár)</p>
+        <div>
+          <div class="border-b border-slate-400 pb-1 mb-2"></div>
+          <p class="font-bold text-slate-800">Átvevő (Mosoda)</p>
         </div>
       </div>
     </div>
 
-    <div class="flex justify-end space-x-3 pt-4 border-t border-slate-100">
-      <button onclick="document.getElementById('batch-modal').classList.add('hidden')" class="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-xl text-sm font-semibold">Bezárás</button>
-      <button onclick="window.print()" class="px-5 py-2 bg-slate-900 hover:bg-slate-800 text-white text-sm font-bold rounded-xl transition-all flex items-center space-x-2 shadow-sm">
+    <div class="flex justify-end space-x-3 pt-4 border-t border-slate-100 print:hidden">
+      <button onclick="document.getElementById('batch-modal').classList.add('hidden')" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-semibold rounded-xl">Bezárás</button>
+      <button onclick="window.print()" class="px-5 py-2 bg-brand-600 hover:bg-brand-700 text-white text-sm font-bold rounded-xl shadow-md flex items-center space-x-1.5">
         <i data-lucide="printer" class="w-4 h-4"></i>
-        <span>Nyomtatás</span>
+        <span>Jegyzék Nyomtatása</span>
       </button>
     </div>
   </div>
@@ -174,38 +187,75 @@ require_once __DIR__ . '/includes/header.php';
 
 <script>
 async function openDeliveryModal(batchId) {
-  const res = await fetch('ajax_scanner.php', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ action: 'get_batch_details', batch_id: batchId })
-  });
-  const data = await res.json();
-  if (!data.success) return;
+  try {
+    const res = await fetch('ajax_scanner.php', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'get_batch_details', batch_id: batchId })
+    });
+    const data = await res.json();
+    if (data.success) {
+      const batch = data.batch;
+      const items = data.items;
 
-  const b = data.batch;
-  document.getElementById('print-batch-number').textContent = b.batch_number;
-  document.getElementById('print-batch-date').textContent = new Date(b.created_at).toLocaleString('hu-HU');
-  document.getElementById('print-location-name').textContent = b.location_name || 'HGA Biomed';
-  document.getElementById('print-location-address').textContent = b.location_address || '';
-  document.getElementById('print-user-name').textContent = b.user_name || '-';
-  document.getElementById('print-direction-label').textContent = b.direction === 'OUT' ? 'MOSODÁBA KÜLDVE (Tisztításra átadva)' : 'MOSODÁBÓL VISSZAVÉVE (Átvéve)';
-  document.getElementById('print-total-count').textContent = `${data.items.length} db`;
+      document.getElementById('print-batch-number').textContent = batch.batch_number;
+      document.getElementById('print-batch-date').textContent = new Date(batch.created_at).toLocaleString('hu-HU');
+      document.getElementById('print-location-name').textContent = batch.location_name || 'HGA Biomed';
+      document.getElementById('print-location-address').textContent = batch.location_address || '';
+      document.getElementById('print-user-name').textContent = batch.user_full_name || 'Kezelő';
+      document.getElementById('print-direction-label').textContent = (batch.direction === 'OUT') ? 'KIADÁS MOSODÁBA' : 'BEVÉTEL MOSÁSBÓL';
+      document.getElementById('print-total-count').textContent = `${items.length} db`;
 
-  document.getElementById('print-category-breakdown').innerHTML = Object.entries(data.categoryCounts).map(([cat, c]) => `
-    <span class="px-2.5 py-1 bg-slate-100 border border-slate-300 rounded font-semibold text-slate-800">${cat}: ${c} db</span>
-  `).join('');
+      const cats = {};
+      items.forEach(i => {
+        cats[i.category] = (cats[i.category] || 0) + 1;
+      });
 
-  document.getElementById('print-items-tbody').innerHTML = data.items.map((item, i) => `
-    <tr>
-      <td class="py-1.5 px-3 font-mono">${i + 1}.</td>
-      <td class="py-1.5 px-3 font-mono font-bold">${item.barcode}</td>
-      <td class="py-1.5 px-3 font-medium">${item.cloth_name} (${item.category} / ${item.color || '-'})</td>
-      <td class="py-1.5 px-3 font-mono">${item.size || '-'}</td>
-      <td class="py-1.5 px-3">${item.employee_name || 'Tartalék'} ${item.employee_code ? '(' + item.employee_code + ')' : ''}</td>
-    </tr>
-  `).join('');
+      document.getElementById('print-category-breakdown').innerHTML = Object.entries(cats).map(([c, n]) => `
+        <span class="px-2 py-0.5 bg-slate-100 border border-slate-300 rounded font-semibold text-[11px]">${c}: <b>${n} db</b></span>
+      `).join('');
 
-  document.getElementById('batch-modal').classList.remove('hidden');
+      document.getElementById('print-items-body').innerHTML = items.map((i, idx) => `
+        <tr>
+          <td class="py-1.5 px-3 text-slate-500">${idx + 1}.</td>
+          <td class="py-1.5 px-3 font-bold">${i.barcode}</td>
+          <td class="py-1.5 px-3 font-sans">${i.cloth_name} (${i.category} / ${i.color || '-'})</td>
+          <td class="py-1.5 px-3 font-sans">${i.size || '-'}</td>
+          <td class="py-1.5 px-3 font-sans font-medium">${i.employee_name || 'Tartalék'}</td>
+        </tr>
+      `).join('');
+
+      document.getElementById('batch-modal').classList.remove('hidden');
+      if (window.lucide) lucide.createIcons();
+    }
+  } catch(e) {
+    alert('Hiba a szállítólevél betöltésekor: ' + e.message);
+  }
+}
+
+async function cancelBatch(batchId, batchNumber) {
+  if (!confirm(`Biztosan törölni / sztornózni kívánja a(z) ${batchNumber} számú mosodai csomagot? A benne lévő ruhák státusza azonnal visszaáll!`)) {
+    return;
+  }
+
+  try {
+    const res = await fetch('ajax_scanner.php', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'cancel_batch', batch_id: batchId })
+    });
+    const data = await res.json();
+    if (data.success) {
+      alert(data.message);
+      const row = document.getElementById(`batch-row-${batchId}`);
+      if (row) row.remove();
+      window.location.reload();
+    } else {
+      alert('Hiba: ' + data.message);
+    }
+  } catch(e) {
+    alert('Hálózati hiba: ' + e.message);
+  }
 }
 </script>
 

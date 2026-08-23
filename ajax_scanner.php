@@ -241,7 +241,6 @@ if ($action === 'remove_item_from_batch') {
 
         $db->commit();
 
-        $batch = $db->fetchOne("SELECT * FROM laundry_batches WHERE id = ?", [$batchId]);
         $items = $db->fetchAll("
             SELECT li.*, c.name as cloth_name, c.category, c.color, c.size, c.item_code,
                    e.full_name as employee_name, e.employee_code, l.short_name as location_short
@@ -252,6 +251,14 @@ if ($action === 'remove_item_from_batch') {
             WHERE li.batch_id = ?
             ORDER BY li.id DESC
         ", [$batchId]);
+
+        // Ha a csomag kiürült (0 tétel maradt benne), automatikusan töröljük a csomag fejlécet is!
+        if (empty($items)) {
+            $db->execute("DELETE FROM laundry_batches WHERE id = ?", [$batchId]);
+            $batch = null;
+        } else {
+            $batch = $db->fetchOne("SELECT * FROM laundry_batches WHERE id = ?", [$batchId]);
+        }
 
         echo json_encode([
             'success' => true,
