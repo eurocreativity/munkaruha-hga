@@ -16,6 +16,40 @@ $action = $data['action'] ?? 'scan';
 $db = Database::getInstance();
 $currentUser = getCurrentUser();
 
+// 0. Nyitott (folyamatban lévő) csomag lekérése oldalbetöltéskor
+if ($action === 'get_current_batch') {
+    $direction = strtoupper($data['direction'] ?? 'OUT');
+    $locationId = intval($data['location_id'] ?? $currentUser['location_id'] ?: 1);
+
+    $batch = $db->fetchOne("
+        SELECT * FROM laundry_batches 
+        WHERE direction = ? AND location_id = ? AND status = 'IN_PROGRESS'
+        ORDER BY id DESC LIMIT 1
+    ", [$direction, $locationId]);
+
+    $items = [];
+    if ($batch) {
+        $items = $db->fetchAll("
+            SELECT li.*, c.name as cloth_name, c.category, c.color, c.size, c.item_code,
+                   e.full_name as employee_name, e.employee_code, l.short_name as location_short
+            FROM laundry_items li
+            JOIN clothes c ON li.cloth_id = c.id
+            LEFT JOIN employees e ON c.employee_id = e.id
+            LEFT JOIN locations l ON li.location_id = l.id
+            WHERE li.batch_id = ?
+            ORDER BY li.id DESC
+        ", [$batch['id']]);
+    }
+
+    echo json_encode([
+        'success' => true,
+        'has_batch' => !empty($batch),
+        'batch' => $batch,
+        'items' => $items
+    ]);
+    exit();
+}
+
 // 1. Elérhető ruhák listája kézi kiválasztáshoz
 if ($action === 'get_available_clothes') {
     $direction = strtoupper($data['direction'] ?? 'OUT');

@@ -292,6 +292,43 @@ const sessionTableBody = document.getElementById('session-items-table');
 const categorySummaryEl = document.getElementById('batch-category-summary');
 const feedbackEl = document.getElementById('scan-feedback');
 
+// 0. Nyitott (folyamatban lévő) csomag betöltése az adatbázisból
+async function loadActiveBatch() {
+  try {
+    const res = await fetch('ajax_scanner.php', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        action: 'get_current_batch',
+        direction: currentMode,
+        location_id: '<?php echo getActiveLocationId(); ?>'
+      })
+    });
+    const data = await res.json();
+    if (data.success && data.has_batch) {
+      currentBatch = data.batch;
+      sessionItems = (data.items || []).map(i => ({
+        cloth_id: i.cloth_id,
+        scanned_at: new Date(i.scanned_at).toLocaleTimeString('hu-HU'),
+        barcode: i.barcode,
+        cloth_name: i.cloth_name,
+        category: i.category,
+        color: i.color,
+        size: i.size,
+        employee_name: i.employee_name,
+        location_short: i.location_short,
+        status: (currentMode === 'OUT') ? 'Mosásba küldve' : 'Visszavéve'
+      }));
+    } else {
+      currentBatch = null;
+      sessionItems = [];
+    }
+    updateSessionTable();
+  } catch (e) {
+    console.warn('Aktív csomag lekérési hiba:', e);
+  }
+}
+
 // 1. Módváltás
 modeOutBtn.addEventListener('click', () => {
   currentMode = 'OUT';
@@ -299,6 +336,7 @@ modeOutBtn.addEventListener('click', () => {
   modeInBtn.className = 'p-5 rounded-2xl border-2 border-slate-200 bg-white hover:border-slate-300 shadow-xs text-left transition-all relative overflow-hidden group';
   badgeOut.classList.remove('hidden');
   badgeIn.classList.add('hidden');
+  loadActiveBatch();
   barcodeInput.focus();
 });
 
@@ -308,8 +346,12 @@ modeInBtn.addEventListener('click', () => {
   modeOutBtn.className = 'p-5 rounded-2xl border-2 border-slate-200 bg-white hover:border-slate-300 shadow-xs text-left transition-all relative overflow-hidden group';
   badgeIn.classList.remove('hidden');
   badgeOut.classList.add('hidden');
+  loadActiveBatch();
   barcodeInput.focus();
 });
+
+// Oldal betöltésekor automatikus betöltés
+loadActiveBatch();
 
 // 2. Vonalkód olvasás
 barcodeInput.addEventListener('keydown', async (e) => {
