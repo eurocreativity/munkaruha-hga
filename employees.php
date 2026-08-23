@@ -1,9 +1,14 @@
 <?php
 require_once __DIR__ . '/includes/auth_check.php';
 require_once __DIR__ . '/classes/Database.php';
+require_once __DIR__ . '/classes/Settings.php';
 
 $db = Database::getInstance();
 $activeLoc = getActiveLocationId();
+
+$settingsObj = new Settings();
+$companyName = $settingsObj->get('company_name', 'HGA Biomed Kft.');
+$companyLogo = $settingsObj->get('company_logo', '');
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!canEdit()) {
@@ -66,7 +71,7 @@ require_once __DIR__ . '/includes/header.php';
   <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-xs flex flex-wrap items-center justify-between gap-4">
     <div>
       <h2 class="text-xl font-bold text-slate-900">Dolgozói Nyilvántartás</h2>
-      <p class="text-xs text-slate-500">Személyekhez rendelt kódok és ruha-készletek</p>
+      <p class="text-xs text-slate-500">Személyekhez rendelt kódok, ruha-készletek és átadás-átvételi nyilatkozatok</p>
     </div>
     <div class="flex items-center space-x-3">
       <form method="GET" action="employees.php" class="relative">
@@ -95,20 +100,112 @@ require_once __DIR__ . '/includes/header.php';
           <p class="text-xs text-slate-400 mb-4"><?php echo $emp['locker_number'] ? 'Szekrény: ' . escape($emp['locker_number']) : 'Nincs szekrény rendelve'; ?></p>
         </div>
 
-        <div class="pt-3 border-t border-slate-100 flex items-center justify-between text-xs">
+        <div class="pt-3 border-t border-slate-100 flex flex-wrap items-center justify-between gap-2 text-xs">
           <div class="flex items-center space-x-3">
             <span title="Összes ruha">👕 <strong class="text-slate-800"><?php echo $emp['total_clothes']; ?></strong> db</span>
             <span title="Mosásban" class="text-amber-700 font-semibold">🌊 <?php echo $emp['in_laundry_count']; ?></span>
             <span title="Dolgozónál aktív" class="text-emerald-700 font-semibold">✓ <?php echo $emp['active_count']; ?></span>
           </div>
-          <a href="clothes.php?search=<?php echo urlencode($emp['full_name']); ?>" class="text-brand-600 hover:text-brand-800 font-bold">Ruhák &rarr;</a>
+          
+          <div class="flex items-center space-x-2">
+            <?php if ($emp['total_clothes'] > 0): ?>
+              <button onclick="openReceiptModal(<?php echo $emp['id']; ?>)" class="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg font-semibold flex items-center space-x-1 transition-all" title="Átadás-átvételi nyilatkozat nyomtatása">
+                <i data-lucide="file-text" class="w-3.5 h-3.5 text-slate-600"></i>
+                <span>Nyilatkozat</span>
+              </button>
+            <?php endif; ?>
+            <a href="clothes.php?search=<?php echo urlencode($emp['full_name']); ?>" class="text-brand-600 hover:text-brand-800 font-bold">Ruhák &rarr;</a>
+          </div>
         </div>
       </div>
     <?php endforeach; ?>
   </div>
 </div>
 
+<!-- DOLGOZÓI ÁTADÁS-ÁTVÉTELI NYILATKOZAT NYOMTATÁSI MODÁL -->
+<div id="receipt-modal" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/70 backdrop-blur-xs hidden p-4 overflow-y-auto">
+  <div class="bg-white rounded-2xl shadow-2xl border border-slate-200 max-w-3xl w-full p-8 space-y-6 my-auto">
+    <div id="printable-area" class="space-y-6 text-slate-800">
+      
+      <!-- FEJLÉC -->
+      <div class="border-b-2 border-slate-800 pb-4 flex justify-between items-start">
+        <div>
+          <h1 class="text-2xl font-black tracking-tight text-slate-900"><?php echo escape($companyName); ?></h1>
+          <p class="text-xs text-slate-600 font-bold uppercase mt-1">MUNKARUHA ÁTADÁS-ÁTVÉTELI ÉS FELELŐSSÉGVÁLLALÁSI NYILATKOZAT</p>
+        </div>
+        <div class="text-right">
+          <p class="text-xs text-slate-500 font-bold uppercase">Dokumentumszám</p>
+          <p id="receipt-doc-number" class="text-sm font-mono font-black text-slate-900"></p>
+          <p id="receipt-doc-date" class="text-xs text-slate-500 font-medium mt-0.5"><?php echo date('Y.m.d'); ?></p>
+        </div>
+      </div>
+
+      <!-- DOLGOZÓ ADATAI -->
+      <div class="grid grid-cols-2 gap-4 bg-slate-50 p-4 rounded-xl text-xs border border-slate-200">
+        <div>
+          <span class="font-bold text-slate-500 uppercase block mb-1">Munkavállaló (Átvevő):</span>
+          <p id="receipt-emp-name" class="font-bold text-slate-900 text-sm"></p>
+          <p class="text-slate-600 mt-0.5">Törzsszám: <strong id="receipt-emp-code" class="font-mono text-slate-900"></strong></p>
+        </div>
+        <div>
+          <span class="font-bold text-slate-500 uppercase block mb-1">Telephely & Szekrény:</span>
+          <p id="receipt-emp-location" class="font-semibold text-slate-900"></p>
+          <p id="receipt-emp-locker" class="text-slate-600 mt-0.5"></p>
+        </div>
+      </div>
+
+      <!-- TÉTELES RUHALISTA -->
+      <div>
+        <h4 class="text-xs font-bold uppercase text-slate-700 mb-2">Átadott / Kiosztott Munkaruházati Cikkek</h4>
+        <table class="min-w-full divide-y divide-slate-300 text-xs">
+          <thead class="bg-slate-100 font-bold text-slate-700 text-left">
+            <tr>
+              <th class="py-2 px-3">Ssz.</th>
+              <th class="py-2 px-3">Vonalkód</th>
+              <th class="py-2 px-3">Megnevezés</th>
+              <th class="py-2 px-3">Kategória / Szín</th>
+              <th class="py-2 px-3">Méret</th>
+              <th class="py-2 px-3">Cikkszám</th>
+              <th class="py-2 px-3 text-right">Mosások</th>
+            </tr>
+          </thead>
+          <tbody id="receipt-clothes-body" class="divide-y divide-slate-200 font-mono"></tbody>
+        </table>
+      </div>
+
+      <!-- JOGI ÉS MUNKAVÉDELMI NYILATKOZAT -->
+      <div class="p-3 bg-slate-50 border border-slate-200 rounded-xl text-[11px] text-slate-600 leading-relaxed space-y-1">
+        <p class="font-bold text-slate-800">Felelősségvállalási Záradék:</p>
+        <p>
+          Alulírott munkavállaló ezennel igazolom, hogy a fent részletezett munkaruházati cikkeket hiánytalanul, tiszta és rendeltetésszerű használatra alkalmas állapotban átvettem. Vállalom, hogy a munkaruhát a munkavédelmi, higiéniai és technológiai előírásoknak megfelelően viselem, megóvom és a mosodai ciklus szerint leadom. Tudomásul veszem, hogy munkaviszonyom megszűnésekor a fenti tételekkel a munkáltató felé elszámolni köteles vagyok.
+        </p>
+      </div>
+
+      <!-- ALÁÍRÁSOK -->
+      <div class="grid grid-cols-2 gap-12 pt-8 border-t border-slate-200 text-center text-xs">
+        <div>
+          <div class="border-b border-slate-400 pb-1 mb-2"></div>
+          <p class="font-bold text-slate-800">Kiadó (Raktáros / Munkáltató)</p>
+        </div>
+        <div>
+          <div class="border-b border-slate-400 pb-1 mb-2"></div>
+          <p class="font-bold text-slate-800">Átvevő (Munkavállaló)</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="flex justify-end space-x-3 pt-4 border-t border-slate-100 print:hidden">
+      <button onclick="document.getElementById('receipt-modal').classList.add('hidden')" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-semibold rounded-xl">Bezárás</button>
+      <button onclick="window.print()" class="px-5 py-2 bg-brand-600 hover:bg-brand-700 text-white text-sm font-bold rounded-xl shadow-md flex items-center space-x-1.5">
+        <i data-lucide="printer" class="w-4 h-4"></i>
+        <span>Nyilatkozat Nyomtatása</span>
+      </button>
+    </div>
+  </div>
+</div>
+
 <?php if (canEdit()): ?>
+<!-- ÚJ DOLGOZÓ MODÁL -->
 <div id="emp-modal" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs hidden">
   <div class="bg-white rounded-2xl shadow-2xl border border-slate-200 max-w-md w-full p-6 space-y-4">
     <div class="flex items-center justify-between border-b border-slate-100 pb-3">
@@ -152,5 +249,48 @@ require_once __DIR__ . '/includes/header.php';
   </div>
 </div>
 <?php endif; ?>
+
+<script>
+async function openReceiptModal(empId) {
+  try {
+    const res = await fetch('ajax_scanner.php', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'get_employee_receipt', employee_id: empId })
+    });
+    const data = await res.json();
+    if (data.success) {
+      const emp = data.employee;
+      const clothes = data.clothes;
+
+      const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+      document.getElementById('receipt-doc-number').textContent = `ATV-${dateStr}-${emp.employee_code}`;
+      document.getElementById('receipt-emp-name').textContent = emp.full_name;
+      document.getElementById('receipt-emp-code').textContent = emp.employee_code;
+      document.getElementById('receipt-emp-location').textContent = emp.location_name || (emp.location_short || 'HGA Biomed');
+      document.getElementById('receipt-emp-locker').textContent = emp.locker_number ? `Szekrényszám: ${emp.locker_number}` : 'Nincs szekrény megadva';
+
+      document.getElementById('receipt-clothes-body').innerHTML = clothes.map((c, idx) => `
+        <tr>
+          <td class="py-1.5 px-3 text-slate-500">${idx + 1}.</td>
+          <td class="py-1.5 px-3 font-bold text-slate-900">${c.barcode}</td>
+          <td class="py-1.5 px-3 font-sans font-medium text-slate-800">${c.name}</td>
+          <td class="py-1.5 px-3 font-sans text-slate-600">${c.category} / ${c.color || '-'}</td>
+          <td class="py-1.5 px-3 font-sans">${c.size || '-'}</td>
+          <td class="py-1.5 px-3 text-slate-500">${c.item_code || '-'}</td>
+          <td class="py-1.5 px-3 text-right font-bold text-slate-700">${c.wash_count || 0} / ${c.max_wash_count || 50}</td>
+        </tr>
+      `).join('');
+
+      document.getElementById('receipt-modal').classList.remove('hidden');
+      if (window.lucide) lucide.createIcons();
+    } else {
+      alert('Hiba: ' + data.message);
+    }
+  } catch(e) {
+    alert('Hálózati hiba: ' + e.message);
+  }
+}
+</script>
 
 <?php require_once __DIR__ . '/includes/footer.php'; ?>

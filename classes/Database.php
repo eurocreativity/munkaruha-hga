@@ -103,8 +103,16 @@ class Database {
             if (!in_array('verification_token_hash', $cols)) {
                 $this->pdo->exec("ALTER TABLE users ADD COLUMN verification_token_hash VARCHAR(255) NULL AFTER reset_token_expires_at");
             }
+            // Ellenőrizzük a clothes tábla oszlopait (Mosási ciklusszámlálóhoz)
+            $clothCols = $this->pdo->query("SHOW COLUMNS FROM clothes")->fetchAll(PDO::FETCH_COLUMN);
+            if (!in_array('wash_count', $clothCols)) {
+                $this->pdo->exec("ALTER TABLE clothes ADD COLUMN wash_count INT DEFAULT 0 AFTER status");
+            }
+            if (!in_array('max_wash_count', $clothCols)) {
+                $this->pdo->exec("ALTER TABLE clothes ADD COLUMN max_wash_count INT DEFAULT 50 AFTER wash_count");
+            }
         } catch (Exception $e) {
-            // Ha még nincs létrehozva a users tábla, ne okozzon hibát
+            // Ha még nincs létrehozva a tábla, ne okozzon hibát
         }
     }
 }

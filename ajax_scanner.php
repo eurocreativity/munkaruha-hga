@@ -23,6 +23,36 @@ $db = Database::getInstance();
 $currentUser = getCurrentUser();
 
 // 0. Nyitott (folyamatban lévő) csomag lekérése oldalbetöltéskor
+if ($action === 'get_employee_receipt') {
+    $empId = intval($data['employee_id'] ?? 0);
+    $emp = $db->fetchOne("
+        SELECT e.*, l.name as location_name, l.short_name as location_short, l.address as location_address
+        FROM employees e
+        LEFT JOIN locations l ON e.location_id = l.id
+        WHERE e.id = ?
+    ", [$empId]);
+
+    if (!$emp) {
+        echo json_encode(['success' => false, 'message' => 'A dolgozó nem található!']);
+        exit();
+    }
+
+    $clothes = $db->fetchAll("
+        SELECT c.*, l.short_name as location_short
+        FROM clothes c
+        LEFT JOIN locations l ON c.location_id = l.id
+        WHERE c.employee_id = ?
+        ORDER BY c.category ASC, c.name ASC
+    ", [$empId]);
+
+    echo json_encode([
+        'success' => true,
+        'employee' => $emp,
+        'clothes' => $clothes
+    ]);
+    exit();
+}
+
 if ($action === 'get_current_batch') {
     $direction = strtoupper($data['direction'] ?? 'OUT');
     $locationId = intval($data['location_id'] ?? $currentUser['location_id'] ?: 1);
@@ -156,7 +186,11 @@ if ($action === 'manual_add_items') {
                 $db->execute("UPDATE clothes SET status = 'IN_LAUNDRY', last_sent_to_laundry = NOW() WHERE id = ?", [$cid]);
             } else {
                 $newStatus = $cloth['employee_is_reserve'] ? 'RESERVE' : 'ACTIVE';
-                $db->execute("UPDATE clothes SET status = ?, last_received_from_laundry = NOW() WHERE id = ?", [$newStatus, $cid]);
+                $db->execute("
+                    UPDATE clothes 
+                    SET status = ?, last_received_from_laundry = NOW(), wash_count = COALESCE(wash_count, 0) + 1 
+                    WHERE id = ?
+                ", [$newStatus, $cid]);
             }
 
             $db->execute("
@@ -233,7 +267,7 @@ if ($action === 'remove_item_from_batch') {
             $prevStatus = ($cloth && $cloth['employee_is_reserve']) ? 'RESERVE' : 'ACTIVE';
             $db->execute("UPDATE clothes SET status = ? WHERE id = ?", [$prevStatus, $clothId]);
         } else {
-            $db->execute("UPDATE clothes SET status = 'IN_LAUNDRY' WHERE id = ?", [$clothId]);
+            $db->execute("UPDATE clothes SET status = 'IN_LAUNDRY', wash_count = GREATEST(0, COALESCE(wash_count, 0) - 1) WHERE id = ?", [$clothId]);
         }
 
         // Tétel törlése a csomagból
@@ -305,7 +339,7 @@ if ($action === 'cancel_batch') {
                 $prevStatus = $item['employee_is_reserve'] ? 'RESERVE' : 'ACTIVE';
                 $db->execute("UPDATE clothes SET status = ? WHERE id = ?", [$prevStatus, $item['cloth_id']]);
             } else {
-                $db->execute("UPDATE clothes SET status = 'IN_LAUNDRY' WHERE id = ?", [$item['cloth_id']]);
+                $db->execute("UPDATE clothes SET status = 'IN_LAUNDRY', wash_count = GREATEST(0, COALESCE(wash_count, 0) - 1) WHERE id = ?", [$item['cloth_id']]);
             }
         }
 
@@ -429,13 +463,27 @@ if ($action === 'scan') {
 
     $db->beginTransaction();
     try {
+        $isLimitReached = false;
         if ($direction === 'OUT') {
             $db->execute("UPDATE clothes SET status = 'IN_LAUNDRY', last_sent_to_laundry = NOW() WHERE id = ?", [$cloth['id']]);
             $statusMsg = "{$cloth['name']} elküldve mosodába (" . ($cloth['employee_name'] ?: 'Tartalék') . ")";
         } else {
             $newStatus = $cloth['employee_is_reserve'] ? 'RESERVE' : 'ACTIVE';
-            $db->execute("UPDATE clothes SET status = ?, last_received_from_laundry = NOW() WHERE id = ?", [$newStatus, $cloth['id']]);
-            $statusMsg = "{$cloth['name']} visszavételezve mosodából (" . ($cloth['employee_name'] ?: 'Tartalék') . ")";
+            $newWashCount = intval($cloth['wash_count'] ?? 0) + 1;
+            $maxWash = intval($cloth['max_wash_count'] ?? 50);
+            $isLimitReached = ($newWashCount >= $maxWash);
+
+            $db->execute("
+                UPDATE clothes 
+                SET status = ?, last_received_from_laundry = NOW(), wash_count = ? 
+                WHERE id = ?
+            ", [$newStatus, $newWashCount, $cloth['id']]);
+
+            if ($isLimitReached) {
+                $statusMsg = "{$cloth['name']} visszavéve! ⚠️ CSEREÉRETT ({$newWashCount}/{$maxWash} mosás)!";
+            } else {
+                $statusMsg = "{$cloth['name']} visszavéve mosodából ({$newWashCount}/{$maxWash} mosás)";
+            }
         }
 
         $db->execute("
@@ -457,9 +505,10 @@ if ($action === 'scan') {
 
         echo json_encode([
             'success' => true,
-            'sound' => 'success',
+            'sound' => $isLimitReached ? 'warning' : 'success',
             'message' => $statusMsg,
-            'cloth' => $cloth,
+            'is_limit_reached' => $isLimitReached,
+            'cloth' => $updatedCloth,
             'batch' => $batch
         ]);
     } catch (Exception $e) {

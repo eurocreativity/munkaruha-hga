@@ -13,6 +13,7 @@ $inLaundry = $db->fetchOne("SELECT COUNT(*) as c FROM clothes WHERE status = 'IN
 $activeClothes = $db->fetchOne("SELECT COUNT(*) as c FROM clothes WHERE status = 'ACTIVE'" . $locAnd)['c'];
 $reserveClothes = $db->fetchOne("SELECT COUNT(*) as c FROM clothes WHERE status = 'RESERVE'" . $locAnd)['c'];
 $lostClothes = $db->fetchOne("SELECT COUNT(*) as c FROM clothes WHERE status = 'LOST'" . $locAnd)['c'];
+$nearLimitClothes = $db->fetchOne("SELECT COUNT(*) as c FROM clothes WHERE wash_count >= max_wash_count AND status NOT IN ('SCRAPPED', 'LOST')" . $locAnd)['c'] ?? 0;
 $totalNetValue = $db->fetchOne("SELECT SUM(net_value) as s FROM clothes" . $locWhere)['s'] ?: 0;
 
 $categories = $db->fetchAll("SELECT category, COUNT(*) as count FROM clothes" . $locWhere . " GROUP BY category");
@@ -43,6 +44,15 @@ require_once __DIR__ . '/includes/header.php';
 ?>
 
 <div class="space-y-6">
+  <?php if ($nearLimitClothes > 0): ?>
+    <div class="p-4 bg-amber-50 border border-amber-200 rounded-2xl flex items-center justify-between shadow-xs">
+      <div class="flex items-center space-x-3 text-amber-900 text-sm font-medium">
+        <i data-lucide="alert-triangle" class="w-5 h-5 text-amber-600 shrink-0"></i>
+        <span><strong>Csereérett munkaruhák figyelmeztetés:</strong> Jelenleg <strong><?php echo $nearLimitClothes; ?> db</strong> munkaruha elérte az ajánlott maximális mosási ciklusszámot (anyagfáradás / csere indokolt).</span>
+      </div>
+      <a href="clothes.php" class="px-3.5 py-1.5 bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs rounded-xl shadow-xs transition-all whitespace-nowrap">Ruhák megtekintése &rarr;</a>
+    </div>
+  <?php endif; ?>
   <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
     <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs">
       <div class="flex items-center justify-between text-slate-500 mb-2">
