@@ -35,6 +35,12 @@ class Mailer {
      * Közvetlen SMTP levélküldés socket kapcsolaton keresztül
      */
     public function send($toEmail, $toName, $subject, $htmlBody, $plainBody = '') {
+        $toEmail = trim($toEmail);
+        if (!filter_var($toEmail, FILTER_VALIDATE_EMAIL)) {
+            $this->lastError = "Érvénytelen email cím formátum: '{$toEmail}'!";
+            return false;
+        }
+
         if (empty($this->host)) {
             $this->lastError = 'Az SMTP szerver nincs beállítva a Rendszerbeállításokban!';
             return false;

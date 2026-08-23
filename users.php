@@ -27,6 +27,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             if (empty($u) || empty($full)) {
                 setFlashMessage('danger', 'A felhasználónév és teljes név megadása kötelező!');
+            } elseif (!empty($email) && !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+                setFlashMessage('danger', "Érvénytelen email cím formátum: '{$email}'! Kérjük valós formátumot adjon meg (pl. nev@ceg.hu)!");
+            } elseif ($sendInvite && empty($email)) {
+                setFlashMessage('danger', 'Meghívó email küldéséhez kötelező megadni egy érvényes email címet!');
             } else {
                 $exists = $db->fetchOne("SELECT id FROM users WHERE username = ? OR (email = ? AND email != '')", [$u, $email]);
                 if ($exists) {
@@ -94,6 +98,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $locId = !empty($_POST['default_location_id']) ? intval($_POST['default_location_id']) : null;
             $newPassword = $_POST['new_password'] ?? '';
             $active = isset($_POST['active']) ? 1 : 0;
+
+            if (!empty($email) && !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+                setFlashMessage('danger', "Érvénytelen email cím formátum: '{$email}'! Kérjük helyes címet adjon meg (pl. nev@ceg.hu)!");
+                redirect('users.php');
+            }
 
             $targetUser = $db->fetchOne("SELECT * FROM users WHERE id = ?", [$userId]);
             if ($targetUser) {

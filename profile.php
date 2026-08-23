@@ -11,6 +11,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $email = trim($_POST['email'] ?? '');
         $full = trim($_POST['full_name'] ?? '');
 
+        if (!empty($email) && !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            setFlashMessage('danger', "Érvénytelen email cím formátum: '{$email}'! Kérjük valós formátumot adjon meg (pl. nev@ceg.hu)!");
+            redirect('profile.php');
+        }
+
         if (!empty($full)) {
             $db->execute("UPDATE users SET full_name = ?, email = ? WHERE id = ?", [$full, $email ?: null, $currentUser['id']]);
             $_SESSION['full_name'] = $full;
