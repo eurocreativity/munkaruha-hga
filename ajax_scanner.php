@@ -163,7 +163,129 @@ if ($action === 'manual_add_items') {
     }
 }
 
-// 3. Egyedi Vonalkód beolvasás
+// 3. Tétel eltávolítása az aktuális csomagból (Visszavonás / Törlés)
+if ($action === 'remove_item_from_batch') {
+    $clothId = intval($data['cloth_id'] ?? 0);
+    $batchId = intval($data['batch_id'] ?? 0);
+
+    if (!$clothId || !$batchId) {
+        echo json_encode(['success' => false, 'message' => 'Hiányzó azonosító!']);
+        exit();
+    }
+
+    $item = $db->fetchOne("SELECT * FROM laundry_items WHERE batch_id = ? AND cloth_id = ?", [$batchId, $clothId]);
+    if (!$item) {
+        echo json_encode(['success' => false, 'message' => 'A tétel nem található a csomagban!']);
+        exit();
+    }
+
+    $cloth = $db->fetchOne("
+        SELECT c.*, e.is_reserve as employee_is_reserve 
+        FROM clothes c 
+        LEFT JOIN employees e ON c.employee_id = e.id 
+        WHERE c.id = ?
+    ", [$clothId]);
+
+    $db->beginTransaction();
+    try {
+        // Státusz visszaállítása az előző állapotra
+        if ($item['direction'] === 'OUT') {
+            $prevStatus = ($cloth && $cloth['employee_is_reserve']) ? 'RESERVE' : 'ACTIVE';
+            $db->execute("UPDATE clothes SET status = ? WHERE id = ?", [$prevStatus, $clothId]);
+        } else {
+            $db->execute("UPDATE clothes SET status = 'IN_LAUNDRY' WHERE id = ?", [$clothId]);
+        }
+
+        // Tétel törlése a csomagból
+        $db->execute("DELETE FROM laundry_items WHERE id = ?", [$item['id']]);
+        $db->execute("UPDATE laundry_batches SET item_count = GREATEST(0, item_count - 1) WHERE id = ?", [$batchId]);
+
+        $db->execute("
+            INSERT INTO audit_logs (user_id, username, action, entity_type, entity_id, details, location_id)
+            VALUES (?, ?, 'REMOVE_ITEM', 'BATCH', ?, ?, ?)
+        ", [$currentUser['id'], $currentUser['username'], $batchId, "Tétel visszavonva a csomagból: {$cloth['name']} ({$cloth['barcode']})", $item['location_id']]);
+
+        $db->commit();
+
+        $batch = $db->fetchOne("SELECT * FROM laundry_batches WHERE id = ?", [$batchId]);
+        $items = $db->fetchAll("
+            SELECT li.*, c.name as cloth_name, c.category, c.color, c.size, c.item_code,
+                   e.full_name as employee_name, e.employee_code, l.short_name as location_short
+            FROM laundry_items li
+            JOIN clothes c ON li.cloth_id = c.id
+            LEFT JOIN employees e ON c.employee_id = e.id
+            LEFT JOIN locations l ON li.location_id = l.id
+            WHERE li.batch_id = ?
+            ORDER BY li.id DESC
+        ", [$batchId]);
+
+        echo json_encode([
+            'success' => true,
+            'message' => "Ruha ({$cloth['name']}) sikeresen eltávolítva a csomagból!",
+            'batch' => $batch,
+            'items' => $items
+        ]);
+        exit();
+    } catch (Exception $e) {
+        $db->rollback();
+        http_response_code(500);
+        echo json_encode(['success' => false, 'message' => 'Hiba a törlés során: ' . $e->getMessage()]);
+        exit();
+    }
+}
+
+// 4. Teljes aktuális csomag visszavonása / törlése
+if ($action === 'cancel_batch') {
+    $batchId = intval($data['batch_id'] ?? 0);
+
+    if (!$batchId) {
+        echo json_encode(['success' => false, 'message' => 'Hiányzó csomag azonosító!']);
+        exit();
+    }
+
+    $items = $db->fetchAll("
+        SELECT li.*, c.employee_id, e.is_reserve as employee_is_reserve 
+        FROM laundry_items li
+        JOIN clothes c ON li.cloth_id = c.id
+        LEFT JOIN employees e ON c.employee_id = e.id
+        WHERE li.batch_id = ?
+    ", [$batchId]);
+
+    $db->beginTransaction();
+    try {
+        foreach ($items as $item) {
+            if ($item['direction'] === 'OUT') {
+                $prevStatus = $item['employee_is_reserve'] ? 'RESERVE' : 'ACTIVE';
+                $db->execute("UPDATE clothes SET status = ? WHERE id = ?", [$prevStatus, $item['cloth_id']]);
+            } else {
+                $db->execute("UPDATE clothes SET status = 'IN_LAUNDRY' WHERE id = ?", [$item['cloth_id']]);
+            }
+        }
+
+        $db->execute("DELETE FROM laundry_items WHERE batch_id = ?", [$batchId]);
+        $db->execute("DELETE FROM laundry_batches WHERE id = ?", [$batchId]);
+
+        $db->execute("
+            INSERT INTO audit_logs (user_id, username, action, entity_type, entity_id, details)
+            VALUES (?, ?, 'CANCEL_BATCH', 'BATCH', ?, 'Folyamatban lévő csomag teljes törlése és tételek visszaállítása')
+        ", [$currentUser['id'], $currentUser['username'], $batchId]);
+
+        $db->commit();
+
+        echo json_encode([
+            'success' => true,
+            'message' => 'A csomag sikeresen törölve, az összes ruha státusza visszaállt!'
+        ]);
+        exit();
+    } catch (Exception $e) {
+        $db->rollback();
+        http_response_code(500);
+        echo json_encode(['success' => false, 'message' => 'Hiba a csomag törlésekor: ' . $e->getMessage()]);
+        exit();
+    }
+}
+
+// 5. Egyedi Vonalkód beolvasás
 if ($action === 'scan') {
     $barcode = trim($data['barcode'] ?? '');
     $direction = strtoupper($data['direction'] ?? 'OUT');
@@ -269,7 +391,7 @@ if ($action === 'scan') {
     exit();
 }
 
-// 4. Csomag lezárása
+// 6. Csomag lezárása
 if ($action === 'finish_batch') {
     $batchId = intval($data['batch_id'] ?? 0);
     $notes = trim($data['notes'] ?? '');
@@ -313,7 +435,7 @@ if ($action === 'finish_batch') {
     exit();
 }
 
-// 5. Csomag részletei
+// 7. Csomag részletei
 if ($action === 'get_batch_details') {
     $batchId = intval($data['batch_id'] ?? 0);
 

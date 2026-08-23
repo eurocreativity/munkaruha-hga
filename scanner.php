@@ -6,6 +6,7 @@ require_once __DIR__ . '/includes/header.php';
 ?>
 
 <div class="space-y-6">
+  <!-- Módváltó gombok -->
   <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
     <button id="scan-mode-out" class="p-5 rounded-2xl border-3 border-brand-600 bg-brand-50/80 shadow-md text-left transition-all relative overflow-hidden group">
       <div class="flex items-center justify-between">
@@ -38,6 +39,7 @@ require_once __DIR__ . '/includes/header.php';
     </button>
   </div>
 
+  <!-- Beviteli és Kézi kiválasztó kártya -->
   <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 md:p-8">
     <div class="max-w-2xl mx-auto text-center space-y-4">
       <div class="flex items-center justify-center space-x-2 text-slate-500 text-sm font-semibold">
@@ -77,6 +79,7 @@ require_once __DIR__ . '/includes/header.php';
     <div id="scan-feedback" class="hidden mt-6 p-4 rounded-xl text-center font-bold text-base transition-all duration-300"></div>
   </div>
 
+  <!-- Aktuális Csomag Táblázat -->
   <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
     <div class="px-6 py-4 bg-slate-50/70 border-b border-slate-200 flex flex-wrap items-center justify-between gap-4">
       <div>
@@ -84,7 +87,7 @@ require_once __DIR__ . '/includes/header.php';
           <h2 class="text-base font-bold text-slate-900">Aktuális Beolvasott Csomag</h2>
           <span id="current-batch-number" class="px-2 py-0.5 text-xs font-mono font-semibold bg-slate-200 text-slate-800 rounded"></span>
         </div>
-        <p class="text-xs text-slate-500 mt-0.5">A most rögzített munkaruhák listája</p>
+        <p class="text-xs text-slate-500 mt-0.5">A most rögzített munkaruhák listája (tételek egyenként is törölhetők)</p>
       </div>
 
       <div class="flex items-center space-x-3">
@@ -92,6 +95,10 @@ require_once __DIR__ . '/includes/header.php';
           <span class="text-xs text-slate-500 font-semibold block">Beolvasva:</span>
           <span id="session-count" class="text-2xl font-black text-brand-600">0 db</span>
         </div>
+        <button id="btnCancelBatch" class="px-3 py-2 bg-red-50 hover:bg-red-100 text-red-700 text-xs font-bold rounded-xl transition-all flex items-center space-x-1" title="Csomag teljes törlése és visszaállítása">
+          <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+          <span>Csomag Kiürítése</span>
+        </button>
         <button id="finish-batch-btn" class="px-4 py-2.5 bg-slate-900 hover:bg-slate-800 text-white text-sm font-semibold rounded-xl transition-all flex items-center space-x-1.5 shadow-sm">
           <i data-lucide="check-circle" class="w-4 h-4"></i>
           <span>Csomag Lezárása & Szállítólevél</span>
@@ -112,12 +119,13 @@ require_once __DIR__ . '/includes/header.php';
             <th class="px-6 py-3">Méret</th>
             <th class="px-6 py-3">Dolgozó / Tartalék</th>
             <th class="px-6 py-3">Telephely</th>
-            <th class="px-6 py-3 text-right">Státusz</th>
+            <th class="px-6 py-3">Státusz</th>
+            <th class="px-6 py-3 text-right">Eltávolítás</th>
           </tr>
         </thead>
         <tbody id="session-items-table" class="divide-y divide-slate-100 bg-white">
           <tr>
-            <td colspan="8" class="px-6 py-8 text-center text-slate-400">
+            <td colspan="9" class="px-6 py-8 text-center text-slate-400">
               Még nincs beolvasott ruha ebben a munkamenetben. Használja a vonalkód olvasót vagy a kézi kiválasztót!
             </td>
           </tr>
@@ -329,15 +337,16 @@ async function processScan(barcode) {
     });
     const data = await res.json();
 
-    if (data.sound === 'success') SoundEffects.playSuccess();
-    else if (data.sound === 'warning') SoundEffects.playWarning();
-    else if (data.sound === 'error') SoundEffects.playError();
+    if (data.sound === 'success') { try { if (window.SoundEffects) SoundEffects.playSuccess(); } catch(e){} }
+    else if (data.sound === 'warning') { try { if (window.SoundEffects) SoundEffects.playWarning(); } catch(e){} }
+    else if (data.sound === 'error') { try { if (window.SoundEffects) SoundEffects.playError(); } catch(e){} }
 
     showFeedback(data.message, data.success ? 'success' : (data.already_scanned ? 'warning' : 'error'));
 
     if (data.success && data.cloth) {
       currentBatch = data.batch;
       sessionItems.unshift({
+        cloth_id: data.cloth.id,
         scanned_at: new Date().toLocaleTimeString('hu-HU'),
         barcode: data.cloth.barcode,
         cloth_name: data.cloth.name,
@@ -351,7 +360,7 @@ async function processScan(barcode) {
       updateSessionTable();
     }
   } catch (err) {
-    SoundEffects.playError();
+    try { if (window.SoundEffects) SoundEffects.playError(); } catch(e){}
     showFeedback('Hálózati hiba a mentés során!', 'error');
   }
   barcodeInput.focus();
@@ -362,7 +371,7 @@ function updateSessionTable() {
   batchNumberEl.textContent = currentBatch ? currentBatch.batch_number : '';
 
   if (sessionItems.length === 0) {
-    sessionTableBody.innerHTML = '<tr><td colspan="8" class="px-6 py-8 text-center text-slate-400">Még nincs beolvasott ruha ebben a munkamenetben.</td></tr>';
+    sessionTableBody.innerHTML = '<tr><td colspan="9" class="px-6 py-8 text-center text-slate-400">Még nincs beolvasott ruha ebben a munkamenetben. Használja a vonalkód olvasót vagy a kézi kiválasztót!</td></tr>';
     categorySummaryEl.innerHTML = '';
     return;
   }
@@ -387,16 +396,94 @@ function updateSessionTable() {
       <td class="px-6 py-3 font-mono text-slate-600">${i.size || '-'}</td>
       <td class="px-6 py-3 font-medium text-slate-900">${i.employee_name || 'Tartalék'}</td>
       <td class="px-6 py-3 text-slate-600">${i.location_short || '-'}</td>
-      <td class="px-6 py-3 text-right">
+      <td class="px-6 py-3">
         <span class="px-2 py-0.5 text-xs font-bold rounded-full ${currentMode === 'OUT' ? 'bg-amber-100 text-amber-800' : 'bg-emerald-100 text-emerald-800'}">
           ${i.status}
         </span>
+      </td>
+      <td class="px-6 py-3 text-right">
+        <button onclick="removeItemFromBatch(${i.cloth_id})" class="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all" title="Eltávolítás ebből a csomagból">
+          <i data-lucide="trash-2" class="w-4 h-4"></i>
+        </button>
       </td>
     </tr>
   `).join('');
 
   if (window.lucide) lucide.createIcons();
 }
+
+// Egyedi tétel törlése a csomagból
+async function removeItemFromBatch(clothId) {
+  if (!currentBatch) return;
+  if (!confirm('Biztosan eltávolítja ezt a ruhát az aktuális csomagból? A ruha státusza visszaáll.')) return;
+
+  try {
+    const res = await fetch('ajax_scanner.php', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        action: 'remove_item_from_batch',
+        cloth_id: clothId,
+        batch_id: currentBatch.id
+      })
+    });
+    const data = await res.json();
+    if (data.success) {
+      currentBatch = data.batch;
+      sessionItems = (data.items || []).map(i => ({
+        cloth_id: i.cloth_id,
+        scanned_at: new Date(i.scanned_at).toLocaleTimeString('hu-HU'),
+        barcode: i.barcode,
+        cloth_name: i.cloth_name,
+        category: i.category,
+        color: i.color,
+        size: i.size,
+        employee_name: i.employee_name,
+        location_short: i.location_short,
+        status: (currentMode === 'OUT') ? 'Mosásba küldve' : 'Visszavéve'
+      }));
+      updateSessionTable();
+      showFeedback(data.message, 'warning');
+    } else {
+      alert('Hiba: ' + data.message);
+    }
+  } catch (err) {
+    alert('Hálózati hiba: ' + err.message);
+  }
+}
+
+// Teljes folyamatban lévő csomag törlése
+document.getElementById('btnCancelBatch').addEventListener('click', async () => {
+  if (!currentBatch || sessionItems.length === 0) {
+    alert('Nincs folyamatban lévő csomag.');
+    return;
+  }
+  if (!confirm('FIGYELEM! Biztosan törli a teljes folyamatban lévő csomagot? Minden tétel státusza visszaáll az eredeti állapotra.')) {
+    return;
+  }
+
+  try {
+    const res = await fetch('ajax_scanner.php', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        action: 'cancel_batch',
+        batch_id: currentBatch.id
+      })
+    });
+    const data = await res.json();
+    if (data.success) {
+      sessionItems = [];
+      currentBatch = null;
+      updateSessionTable();
+      showFeedback(data.message, 'warning');
+    } else {
+      alert('Hiba: ' + data.message);
+    }
+  } catch (err) {
+    alert('Hálózati hiba: ' + err.message);
+  }
+});
 
 function showFeedback(msg, type) {
   feedbackEl.classList.remove('hidden', 'bg-emerald-100', 'text-emerald-900', 'bg-amber-100', 'text-amber-900', 'bg-red-100', 'text-red-900');
@@ -542,6 +629,7 @@ btnAddSelectedToBatch.addEventListener('click', async () => {
       try { if (window.SoundEffects) SoundEffects.playSuccess(); } catch(e){}
       currentBatch = data.batch;
       sessionItems = (data.items || []).map(i => ({
+        cloth_id: i.cloth_id,
         scanned_at: new Date(i.scanned_at).toLocaleTimeString('hu-HU'),
         barcode: i.barcode,
         cloth_name: i.cloth_name,
