@@ -1,0 +1,913 @@
+<!DOCTYPE html>
+<html lang="hu" class="h-full bg-slate-50">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>HGA Biomed - Munkaruha Nyilvántartó és Mosodai Rendszer</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script src="https://unpkg.com/html5-qrcode"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50: '#f0fdf4', 100: '#dcfce7', 500: '#22c55e', 600: '#16a34a', 700: '#15803d', 800: '#166534', 900: '#14532d'
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    @media print {
+      body * { visibility: hidden; }
+      #printable-area, #printable-area * { visibility: visible; }
+      #printable-area { position: absolute; left: 0; top: 0; width: 100%; }
+    }
+  </style>
+</head>
+<body class="h-full font-sans text-slate-800 antialiased flex flex-col">
+
+  <!-- BEJELENTKEZŐ KÉPERNYŐ -->
+  <div id="login-view" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/80 backdrop-blur-sm hidden">
+    <div class="w-full max-w-md bg-white rounded-2xl shadow-2xl p-8 border border-slate-100">
+      <div class="text-center mb-8">
+        <div class="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-brand-50 text-brand-600 mb-4 shadow-inner">
+          <i data-lucide="shirt" class="w-8 h-8"></i>
+        </div>
+        <h1 class="text-2xl font-bold text-slate-900">HGA Biomed Kft.</h1>
+        <p class="text-sm text-slate-500 mt-1 font-medium">Munkaruha és Mosodai Nyilvántartó</p>
+      </div>
+
+      <form id="login-form" class="space-y-5">
+        <div>
+          <label class="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-2">Felhasználónév</label>
+          <div class="relative">
+            <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400">
+              <i data-lucide="user" class="w-5 h-5"></i>
+            </span>
+            <input type="text" id="login-username" required autocomplete="username"
+              class="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-500 focus:bg-white focus:outline-none"
+              placeholder="pl. admin vagy jutai_operator">
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-2">Jelszó</label>
+          <div class="relative">
+            <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400">
+              <i data-lucide="lock" class="w-5 h-5"></i>
+            </span>
+            <input type="password" id="login-password" required autocomplete="current-password"
+              class="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-500 focus:bg-white focus:outline-none"
+              placeholder="••••••••">
+          </div>
+        </div>
+
+        <div id="login-error" class="hidden p-3 text-sm text-red-700 bg-red-50 rounded-xl border border-red-200 font-medium"></div>
+
+        <button type="submit"
+          class="w-full py-3.5 px-4 bg-brand-600 hover:bg-brand-700 active:bg-brand-800 text-white font-semibold rounded-xl shadow-lg shadow-brand-600/30 transition-all flex items-center justify-center space-x-2">
+          <span>Bejelentkezés</span>
+          <i data-lucide="arrow-right" class="w-4 h-4"></i>
+        </button>
+      </form>
+
+      <div class="mt-6 pt-6 border-t border-slate-100 text-xs text-slate-400 text-center space-y-1">
+        <p>Alapértelmezett fiókok: <span class="font-mono text-slate-600">admin / admin123</span></p>
+        <p><span class="font-mono text-slate-600">jutai_operator / jutai123</span> | <span class="font-mono text-slate-600">nagygat_operator / nagygat123</span></p>
+      </div>
+    </div>
+  </div>
+
+  <!-- FŐ ALKALMAZÁS -->
+  <div id="app-container" class="flex-1 flex flex-col min-h-screen">
+    <header class="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-xs">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="flex items-center justify-between h-16">
+          <div class="flex items-center space-x-3">
+            <div class="flex items-center justify-center w-10 h-10 rounded-xl bg-brand-600 text-white shadow-md shadow-brand-600/20">
+              <i data-lucide="shirt" class="w-6 h-6"></i>
+            </div>
+            <div>
+              <div class="flex items-center space-x-2">
+                <span class="font-bold text-slate-900 text-lg leading-none">HGA Biomed</span>
+                <span class="px-2 py-0.5 text-xs font-semibold bg-brand-100 text-brand-800 rounded-full">v1.0</span>
+              </div>
+              <p class="text-xs text-slate-500 font-medium">Munkaruha & Mosoda Rendszer</p>
+            </div>
+          </div>
+
+          <div class="hidden md:flex items-center bg-slate-100 p-1 rounded-xl border border-slate-200">
+            <span class="text-xs font-semibold text-slate-500 px-2 flex items-center">
+              <i data-lucide="map-pin" class="w-3.5 h-3.5 mr-1 text-slate-400"></i> Telephely:
+            </span>
+            <select id="global-location-select" class="text-sm font-semibold text-slate-700 bg-white px-3 py-1.5 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500 shadow-xs">
+              <option value="">Mindkét telephely (Összes)</option>
+              <option value="1">1 - Jutai út 50.</option>
+              <option value="2">2 - Nagygát u. 1.</option>
+            </select>
+          </div>
+
+          <div class="flex items-center space-x-3">
+            <div class="text-right hidden sm:block">
+              <p id="user-display-name" class="text-sm font-bold text-slate-800 leading-tight">Adminisztrátor</p>
+              <span id="user-display-role" class="text-xs font-medium text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded">Admin</span>
+            </div>
+            <button id="logout-btn" title="Kijelentkezés" class="p-2 text-slate-500 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all">
+              <i data-lucide="log-out" class="w-5 h-5"></i>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <nav class="bg-slate-900 text-slate-300">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div class="flex space-x-1 overflow-x-auto py-1.5 scrollbar-none text-sm font-medium">
+            <button data-tab="scanner" class="nav-tab flex items-center space-x-2 px-3.5 py-2 rounded-lg text-white bg-brand-600 shadow-sm transition-all whitespace-nowrap">
+              <i data-lucide="scan-barcode" class="w-4 h-4 text-brand-200"></i>
+              <span class="font-bold">Gyors Vonalkód Olvasó</span>
+            </button>
+            <button data-tab="dashboard" class="nav-tab flex items-center space-x-2 px-3.5 py-2 rounded-lg hover:text-white hover:bg-slate-800 transition-all whitespace-nowrap">
+              <i data-lucide="layout-dashboard" class="w-4 h-4"></i>
+              <span>Vezérlőpult</span>
+            </button>
+            <button data-tab="clothes" class="nav-tab flex items-center space-x-2 px-3.5 py-2 rounded-lg hover:text-white hover:bg-slate-800 transition-all whitespace-nowrap">
+              <i data-lucide="tags" class="w-4 h-4"></i>
+              <span>Munkaruhák</span>
+            </button>
+            <button data-tab="employees" class="nav-tab flex items-center space-x-2 px-3.5 py-2 rounded-lg hover:text-white hover:bg-slate-800 transition-all whitespace-nowrap">
+              <i data-lucide="users" class="w-4 h-4"></i>
+              <span>Dolgozók</span>
+            </button>
+            <button data-tab="batches" class="nav-tab flex items-center space-x-2 px-3.5 py-2 rounded-lg hover:text-white hover:bg-slate-800 transition-all whitespace-nowrap">
+              <i data-lucide="truck" class="w-4 h-4"></i>
+              <span>Mosodai Csomagok & Szállítólevelek</span>
+            </button>
+            <button data-tab="in-laundry" class="nav-tab flex items-center space-x-2 px-3.5 py-2 rounded-lg hover:text-white hover:bg-slate-800 transition-all whitespace-nowrap">
+              <i data-lucide="clock" class="w-4 h-4"></i>
+              <span>Mosásban lévők</span>
+            </button>
+            <button data-tab="import-export" class="nav-tab flex items-center space-x-2 px-3.5 py-2 rounded-lg hover:text-white hover:bg-slate-800 transition-all whitespace-nowrap">
+              <i data-lucide="file-spreadsheet" class="w-4 h-4"></i>
+              <span>Leltár CSV</span>
+            </button>
+            <button data-tab="admin" id="admin-nav-tab" class="nav-tab flex items-center space-x-2 px-3.5 py-2 rounded-lg hover:text-white hover:bg-slate-800 transition-all whitespace-nowrap">
+              <i data-lucide="settings" class="w-4 h-4"></i>
+              <span>Admin & Napló</span>
+            </button>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8">
+      <!-- 1. GYORS SCANNER -->
+      <section id="view-scanner" class="tab-content space-y-6">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <button id="scan-mode-out" class="p-5 rounded-2xl border-3 border-brand-600 bg-brand-50/80 shadow-md text-left transition-all relative overflow-hidden group">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center space-x-3">
+                <div class="w-12 h-12 rounded-xl bg-brand-600 text-white flex items-center justify-center shadow-lg shadow-brand-600/30">
+                  <i data-lucide="log-out" class="w-6 h-6 rotate-90"></i>
+                </div>
+                <div>
+                  <h3 class="font-bold text-slate-900 text-lg">MOSODÁBA KÜLDÉS (Kiolvasás)</h3>
+                  <p class="text-xs text-slate-600">Szennyes ruhák átadása a mosodának</p>
+                </div>
+              </div>
+              <span id="badge-mode-out" class="px-3 py-1 bg-brand-600 text-white text-xs font-bold rounded-full uppercase tracking-wider">AKTÍV MÓD</span>
+            </div>
+          </button>
+
+          <button id="scan-mode-in" class="p-5 rounded-2xl border-2 border-slate-200 bg-white hover:border-slate-300 shadow-xs text-left transition-all relative overflow-hidden group">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center space-x-3">
+                <div class="w-12 h-12 rounded-xl bg-blue-600 text-white flex items-center justify-center shadow-lg shadow-blue-600/30">
+                  <i data-lucide="log-in" class="w-6 h-6 -rotate-90"></i>
+                </div>
+                <div>
+                  <h3 class="font-bold text-slate-900 text-lg">VISSZAVÉTEL MOSÁSBÓL (Beolvasás)</h3>
+                  <p class="text-xs text-slate-600">Tiszta ruhák beérkezése és visszarendelése</p>
+                </div>
+              </div>
+              <span id="badge-mode-in" class="hidden px-3 py-1 bg-blue-600 text-white text-xs font-bold rounded-full uppercase tracking-wider">AKTÍV MÓD</span>
+            </div>
+          </button>
+        </div>
+
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 md:p-8">
+          <div class="max-w-2xl mx-auto text-center space-y-4">
+            <div class="flex items-center justify-center space-x-2 text-slate-500 text-sm font-semibold">
+              <i data-lucide="barcode" class="w-5 h-5 text-brand-600"></i>
+              <span>VONALKÓD BEOLVASÁSA (Kézi szkenner vagy billentyűzet)</span>
+            </div>
+
+            <div class="relative">
+              <input type="text" id="barcode-input" autofocus autocomplete="off"
+                class="w-full text-center text-3xl md:text-4xl font-mono font-bold tracking-widest py-5 px-6 bg-slate-50 border-2 border-brand-500 rounded-2xl focus:bg-white focus:outline-none focus:ring-4 focus:ring-brand-500/20 text-slate-900 transition-all placeholder:text-slate-300 placeholder:font-sans placeholder:text-xl"
+                placeholder="Olvassa be a vonalkódot...">
+              
+              <button id="camera-scan-btn" title="Kamerás olvasás bekapcsolása" class="absolute right-4 top-1/2 -translate-y-1/2 p-2.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl transition-all">
+                <i data-lucide="camera" class="w-6 h-6"></i>
+              </button>
+            </div>
+
+            <div id="camera-container" class="hidden max-w-md mx-auto overflow-hidden rounded-2xl border-2 border-slate-300 shadow-md">
+              <div id="qr-reader" style="width: 100%;"></div>
+              <button id="close-camera-btn" class="w-full py-2 bg-slate-800 text-white text-xs font-bold">Kamera bezárása</button>
+            </div>
+
+            <div class="flex items-center justify-center space-x-6 text-xs text-slate-400 font-medium pt-1">
+              <span class="flex items-center"><i data-lucide="volume-2" class="w-4 h-4 mr-1 text-emerald-500"></i> Hangjelzés aktív</span>
+              <span class="flex items-center"><i data-lucide="zap" class="w-4 h-4 mr-1 text-amber-500"></i> Azonnali rögzítés Enter-re</span>
+            </div>
+          </div>
+
+          <div id="scan-feedback" class="hidden mt-6 p-4 rounded-xl text-center font-bold text-base transition-all duration-300"></div>
+        </div>
+
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+          <div class="px-6 py-4 bg-slate-50/70 border-b border-slate-200 flex flex-wrap items-center justify-between gap-4">
+            <div>
+              <div class="flex items-center space-x-2">
+                <h2 class="text-base font-bold text-slate-900">Aktuális Beolvasott Csomag</h2>
+                <span id="current-batch-number" class="px-2 py-0.5 text-xs font-mono font-semibold bg-slate-200 text-slate-800 rounded"></span>
+              </div>
+              <p class="text-xs text-slate-500 mt-0.5">A most beolvasott munkaruhák listája</p>
+            </div>
+
+            <div class="flex items-center space-x-3">
+              <div class="text-right">
+                <span class="text-xs text-slate-500 font-semibold block">Beolvasva:</span>
+                <span id="session-count" class="text-2xl font-black text-brand-600">0 db</span>
+              </div>
+              <button id="finish-batch-btn" class="px-4 py-2.5 bg-slate-900 hover:bg-slate-800 text-white text-sm font-semibold rounded-xl transition-all flex items-center space-x-1.5 shadow-sm">
+                <i data-lucide="check-circle" class="w-4 h-4"></i>
+                <span>Csomag Lezárása & Szállítólevél</span>
+              </button>
+            </div>
+          </div>
+
+          <div id="batch-category-summary" class="px-6 py-3 bg-white border-b border-slate-100 flex flex-wrap gap-3 text-xs font-semibold text-slate-600"></div>
+
+          <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-slate-200 text-sm">
+              <thead class="bg-slate-50 text-slate-500 text-xs uppercase font-bold text-left">
+                <tr>
+                  <th class="px-6 py-3">Időpont</th>
+                  <th class="px-6 py-3">Vonalkód</th>
+                  <th class="px-6 py-3">Megnevezés</th>
+                  <th class="px-6 py-3">Kategória / Szín</th>
+                  <th class="px-6 py-3">Méret</th>
+                  <th class="px-6 py-3">Dolgozó / Tartalék</th>
+                  <th class="px-6 py-3">Telephely</th>
+                  <th class="px-6 py-3 text-right">Státusz</th>
+                </tr>
+              </thead>
+              <tbody id="session-items-table" class="divide-y divide-slate-100 bg-white">
+                <tr>
+                  <td colspan="8" class="px-6 py-8 text-center text-slate-400">
+                    Még nincs beolvasott ruha ebben a munkamenetben. Használja a vonalkód olvasót!
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- 2. DASHBOARD -->
+      <section id="view-dashboard" class="tab-content space-y-6 hidden">
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+          <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs">
+            <div class="flex items-center justify-between text-slate-500 mb-2">
+              <span class="text-xs font-bold uppercase tracking-wider">Összes Ruha</span>
+              <div class="p-2 rounded-xl bg-slate-100 text-slate-700"><i data-lucide="layers" class="w-5 h-5"></i></div>
+            </div>
+            <p id="kpi-total" class="text-3xl font-black text-slate-900">-</p>
+            <span class="text-xs text-slate-400 font-medium">Leltárban rögzítve</span>
+          </div>
+
+          <div class="bg-white p-5 rounded-2xl border border-amber-200 bg-amber-50/30 shadow-xs">
+            <div class="flex items-center justify-between text-amber-600 mb-2">
+              <span class="text-xs font-bold uppercase tracking-wider">Mosásban</span>
+              <div class="p-2 rounded-xl bg-amber-100 text-amber-700"><i data-lucide="waves" class="w-5 h-5"></i></div>
+            </div>
+            <p id="kpi-in-laundry" class="text-3xl font-black text-amber-700">-</p>
+            <span class="text-xs text-amber-600/80 font-medium">Mosodánál lévő tételek</span>
+          </div>
+
+          <div class="bg-white p-5 rounded-2xl border border-emerald-200 bg-emerald-50/30 shadow-xs">
+            <div class="flex items-center justify-between text-emerald-600 mb-2">
+              <span class="text-xs font-bold uppercase tracking-wider">Dolgozónál</span>
+              <div class="p-2 rounded-xl bg-emerald-100 text-emerald-700"><i data-lucide="user-check" class="w-5 h-5"></i></div>
+            </div>
+            <p id="kpi-active" class="text-3xl font-black text-emerald-700">-</p>
+            <span class="text-xs text-emerald-600/80 font-medium">Kiosztott tiszta ruhák</span>
+          </div>
+
+          <div class="bg-white p-5 rounded-2xl border border-blue-200 bg-blue-50/30 shadow-xs">
+            <div class="flex items-center justify-between text-blue-600 mb-2">
+              <span class="text-xs font-bold uppercase tracking-wider">Tartalék</span>
+              <div class="p-2 rounded-xl bg-blue-100 text-blue-700"><i data-lucide="package" class="w-5 h-5"></i></div>
+            </div>
+            <p id="kpi-reserve" class="text-3xl font-black text-blue-700">-</p>
+            <span class="text-xs text-blue-600/80 font-medium">Raktáron lévő készlet</span>
+          </div>
+
+          <div class="bg-white p-5 rounded-2xl border border-red-200 bg-red-50/30 shadow-xs">
+            <div class="flex items-center justify-between text-red-600 mb-2">
+              <span class="text-xs font-bold uppercase tracking-wider">Hiányzó / Selejt</span>
+              <div class="p-2 rounded-xl bg-red-100 text-red-700"><i data-lucide="alert-triangle" class="w-5 h-5"></i></div>
+            </div>
+            <p id="kpi-lost" class="text-3xl font-black text-red-700">-</p>
+            <span class="text-xs text-red-600/80 font-medium">Elveszett vagy selejtezett</span>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-xs">
+            <h3 class="font-bold text-slate-900 mb-4 flex items-center">
+              <i data-lucide="pie-chart" class="w-4 h-4 mr-2 text-brand-600"></i> Ruhatípusok megoszlása
+            </h3>
+            <div class="h-64 relative flex items-center justify-center">
+              <canvas id="categoryChart"></canvas>
+            </div>
+          </div>
+
+          <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-xs">
+            <h3 class="font-bold text-slate-900 mb-4 flex items-center">
+              <i data-lucide="palette" class="w-4 h-4 mr-2 text-blue-600"></i> Színek megoszlása
+            </h3>
+            <div class="h-64 relative flex items-center justify-center">
+              <canvas id="colorChart"></canvas>
+            </div>
+          </div>
+
+          <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-xs flex flex-col justify-between">
+            <div>
+              <h3 class="font-bold text-slate-900 mb-4 flex items-center">
+                <i data-lucide="map" class="w-4 h-4 mr-2 text-indigo-600"></i> Telephelyek Leltára
+              </h3>
+              <div id="location-summary-cards" class="space-y-3"></div>
+            </div>
+            <div class="mt-4 pt-4 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
+              <span>Teljes amortizációs leltárérték:</span>
+              <span id="kpi-total-value" class="font-bold text-slate-900 text-sm">-</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
+          <div class="px-6 py-4 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
+            <h3 class="font-bold text-slate-900 flex items-center">
+              <i data-lucide="history" class="w-4 h-4 mr-2 text-slate-500"></i> Legutóbbi Mosodai Mozgások
+            </h3>
+            <span class="text-xs text-slate-500">Valós idejű audit</span>
+          </div>
+          <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-slate-200 text-sm">
+              <thead class="bg-slate-50/50 text-slate-500 text-xs font-bold text-left uppercase">
+                <tr>
+                  <th class="px-6 py-3">Időpont</th>
+                  <th class="px-6 py-3">Irány</th>
+                  <th class="px-6 py-3">Vonalkód</th>
+                  <th class="px-6 py-3">Megnevezés</th>
+                  <th class="px-6 py-3">Dolgozó</th>
+                  <th class="px-6 py-3">Telephely</th>
+                  <th class="px-6 py-3">Kezelő</th>
+                </tr>
+              </thead>
+              <tbody id="dashboard-recent-table" class="divide-y divide-slate-100 bg-white"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- 3. RUHÁK LELTÁRA -->
+      <section id="view-clothes" class="tab-content space-y-6 hidden">
+        <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-xs space-y-4">
+          <div class="flex flex-wrap items-center justify-between gap-4">
+            <div>
+              <h2 class="text-xl font-bold text-slate-900">Munkaruhák Nyilvántartása</h2>
+              <p class="text-xs text-slate-500">Keresés, szűrés, dolgozókhoz rendelés és státuszmódosítás</p>
+            </div>
+            <button id="open-new-cloth-modal" class="px-4 py-2.5 bg-brand-600 hover:bg-brand-700 text-white font-semibold text-sm rounded-xl transition-all flex items-center space-x-2 shadow-sm">
+              <i data-lucide="plus" class="w-4 h-4"></i>
+              <span>Új Ruha Hozzáadása</span>
+            </button>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-3 pt-2">
+            <div class="md:col-span-2 relative">
+              <i data-lucide="search" class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
+              <input type="text" id="clothes-search" placeholder="Keresés vonalkód, név, dolgozó..."
+                class="w-full pl-9 pr-3 py-2 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-500 focus:bg-white focus:outline-none">
+            </div>
+            <div>
+              <select id="clothes-filter-category" class="w-full py-2 px-3 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-500">
+                <option value="">Összes kategória</option>
+                <option value="Póló">Póló</option>
+                <option value="Köpeny">Köpeny</option>
+                <option value="Nadrág">Nadrág</option>
+                <option value="Kazak">Kazak</option>
+                <option value="Egyéb">Egyéb</option>
+              </select>
+            </div>
+            <div>
+              <select id="clothes-filter-status" class="w-full py-2 px-3 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-500">
+                <option value="">Összes státusz</option>
+                <option value="ACTIVE">Aktív (Dolgozónál)</option>
+                <option value="IN_LAUNDRY">Mosásban</option>
+                <option value="RESERVE">Tartalék</option>
+                <option value="LOST">Hiányzó / Elveszett</option>
+                <option value="SCRAPPED">Selejtezve</option>
+              </select>
+            </div>
+            <div>
+              <select id="clothes-filter-color" class="w-full py-2 px-3 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-500">
+                <option value="">Összes szín</option>
+                <option value="Fehér">Fehér</option>
+                <option value="Zöld">Zöld</option>
+                <option value="Bottlezöld">Bottlezöld</option>
+                <option value="Kék">Kék</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
+          <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-slate-200 text-sm">
+              <thead class="bg-slate-50 text-slate-500 text-xs uppercase font-bold text-left">
+                <tr>
+                  <th class="px-6 py-3.5">Vonalkód</th>
+                  <th class="px-6 py-3.5">Cikkszám / Név</th>
+                  <th class="px-6 py-3.5">Kategória</th>
+                  <th class="px-6 py-3.5">Szín / Méret</th>
+                  <th class="px-6 py-3.5">Hozzárendelt Dolgozó</th>
+                  <th class="px-6 py-3.5">Telephely</th>
+                  <th class="px-6 py-3.5">Státusz</th>
+                  <th class="px-6 py-3.5 text-right">Művelet</th>
+                </tr>
+              </thead>
+              <tbody id="clothes-table-body" class="divide-y divide-slate-100 bg-white"></tbody>
+            </table>
+          </div>
+          <div class="px-6 py-3 bg-slate-50 border-t border-slate-200 flex items-center justify-between text-xs text-slate-500">
+            <span id="clothes-count-label">Összesen: 0 tétel</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- 4. DOLGOZÓK -->
+      <section id="view-employees" class="tab-content space-y-6 hidden">
+        <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-xs flex flex-wrap items-center justify-between gap-4">
+          <div>
+            <h2 class="text-xl font-bold text-slate-900">Dolgozói Nyilvántartás</h2>
+            <p class="text-xs text-slate-500">Személyekhez rendelt kódok és ruha-készletek</p>
+          </div>
+          <div class="flex items-center space-x-3">
+            <div class="relative">
+              <i data-lucide="search" class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
+              <input type="text" id="employees-search" placeholder="Keresés név, törzsszám..."
+                class="pl-9 pr-3 py-2 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-500 focus:bg-white focus:outline-none">
+            </div>
+            <button id="open-new-employee-modal" class="px-4 py-2 bg-brand-600 hover:bg-brand-700 text-white font-semibold text-sm rounded-xl transition-all flex items-center space-x-2">
+              <i data-lucide="user-plus" class="w-4 h-4"></i>
+              <span>Új Dolgozó</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" id="employees-grid"></div>
+      </section>
+
+      <!-- 5. CSOMAGOK -->
+      <section id="view-batches" class="tab-content space-y-6 hidden">
+        <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-xs flex flex-wrap items-center justify-between gap-4">
+          <div>
+            <h2 class="text-xl font-bold text-slate-900">Mosodai Szállítólevelek & Csomagok</h2>
+            <p class="text-xs text-slate-500">Minden elküldött és beérkezett tétel hivatalos átadóíve és előzménye</p>
+          </div>
+          <div class="flex items-center space-x-3">
+            <select id="batches-filter-direction" class="py-2 px-3 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-500">
+              <option value="">Összes irány (Kiadás & Bevétel)</option>
+              <option value="OUT">Kiadás (Mosodába küldve)</option>
+              <option value="IN">Bevétel (Mosodából visszavéve)</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
+          <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-slate-200 text-sm">
+              <thead class="bg-slate-50 text-slate-500 text-xs uppercase font-bold text-left">
+                <tr>
+                  <th class="px-6 py-3.5">Csomag / Szállítólevél Szám</th>
+                  <th class="px-6 py-3.5">Irány</th>
+                  <th class="px-6 py-3.5">Telephely</th>
+                  <th class="px-6 py-3.5">Darabszám</th>
+                  <th class="px-6 py-3.5">Létrehozva</th>
+                  <th class="px-6 py-3.5">Kezelő</th>
+                  <th class="px-6 py-3.5">Státusz</th>
+                  <th class="px-6 py-3.5 text-right">Szállítólevél</th>
+                </tr>
+              </thead>
+              <tbody id="batches-table-body" class="divide-y divide-slate-100 bg-white"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- 6. MOSÁSBAN LÉVŐK -->
+      <section id="view-in-laundry" class="tab-content space-y-6 hidden">
+        <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-xs flex flex-wrap items-center justify-between gap-4">
+          <div>
+            <div class="flex items-center space-x-2">
+              <h2 class="text-xl font-bold text-slate-900">Jelenleg Mosásban Lévő Ruhák</h2>
+              <span id="in-laundry-badge-count" class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-100 text-amber-800">0 db</span>
+            </div>
+            <p class="text-xs text-slate-500">Melyik ruha van elküldve a mosodába és mióta nem érkezett vissza</p>
+          </div>
+          <button onclick="window.print()" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-semibold rounded-xl transition-all flex items-center space-x-2">
+            <i data-lucide="printer" class="w-4 h-4"></i>
+            <span>Hiánylista Nyomtatása</span>
+          </button>
+        </div>
+
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
+          <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-slate-200 text-sm">
+              <thead class="bg-slate-50 text-slate-500 text-xs uppercase font-bold text-left">
+                <tr>
+                  <th class="px-6 py-3.5">Vonalkód</th>
+                  <th class="px-6 py-3.5">Megnevezés</th>
+                  <th class="px-6 py-3.5">Kategória / Szín</th>
+                  <th class="px-6 py-3.5">Méret</th>
+                  <th class="px-6 py-3.5">Dolgozó</th>
+                  <th class="px-6 py-3.5">Telephely</th>
+                  <th class="px-6 py-3.5">Elküldés Dátuma</th>
+                  <th class="px-6 py-3.5">Eltelt Idő</th>
+                </tr>
+              </thead>
+              <tbody id="in-laundry-table-body" class="divide-y divide-slate-100 bg-white"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- 7. CSV IMPORT / EXPORT -->
+      <section id="view-import-export" class="tab-content space-y-6 hidden">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-xs flex flex-col justify-between space-y-4">
+            <div>
+              <div class="w-12 h-12 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center mb-3">
+                <i data-lucide="download" class="w-6 h-6"></i>
+              </div>
+              <h3 class="text-lg font-bold text-slate-900">Leltár Exportálása (CSV)</h3>
+              <p class="text-xs text-slate-500 mt-1 leading-relaxed">
+                Letölti az aktuális, teljes adatbázist a HGA Biomed pontosvesszővel tagolt szabványos CSV formátumában.
+                Ez a fájl közvetlenül megnyitható Excelben is.
+              </p>
+            </div>
+            <button id="download-csv-btn" class="w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-sm rounded-xl transition-all flex items-center justify-center space-x-2 shadow-sm">
+              <i data-lucide="file-down" class="w-4 h-4"></i>
+              <span>Aktuális CSV Letöltése</span>
+            </button>
+          </div>
+
+          <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-xs flex flex-col justify-between space-y-4">
+            <div>
+              <div class="w-12 h-12 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center mb-3">
+                <i data-lucide="upload" class="w-6 h-6"></i>
+              </div>
+              <h3 class="text-lg font-bold text-slate-900">Frissített Leltár Betöltése (CSV Import)</h3>
+              <p class="text-xs text-slate-500 mt-1 leading-relaxed">
+                Amennyiben a vezetőségtől új vagy frissített leltár érkezik, itt egy gombnyomással beimportálhatja.
+                A meglévő vonalkódok frissülnek, az újak hozzáadódnak.
+              </p>
+            </div>
+
+            <form id="csv-import-form" class="space-y-3">
+              <input type="file" id="csv-file-input" accept=".csv,text/csv" required
+                class="w-full text-xs text-slate-500 file:mr-4 file:py-2.5 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-slate-100 file:text-slate-700 hover:file:bg-slate-200">
+              <button type="submit" class="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold text-sm rounded-xl transition-all flex items-center justify-center space-x-2 shadow-sm">
+                <i data-lucide="file-up" class="w-4 h-4"></i>
+                <span>CSV Fájl Feldolgozása</span>
+              </button>
+            </form>
+          </div>
+        </div>
+      </section>
+
+      <!-- 8. ADMIN & NAPLÓ -->
+      <section id="view-admin" class="tab-content space-y-6 hidden">
+        <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-xs flex flex-wrap items-center justify-between gap-4">
+          <div>
+            <h2 class="text-xl font-bold text-slate-900">Rendszerfelhasználók & Audit Napló</h2>
+            <p class="text-xs text-slate-500">Többfelhasználós jogosultságok és teljes műveleti előzmények</p>
+          </div>
+          <button id="open-new-user-modal" class="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white font-semibold text-sm rounded-xl transition-all flex items-center space-x-2">
+            <i data-lucide="user-plus" class="w-4 h-4"></i>
+            <span>Új Felhasználó</span>
+          </button>
+        </div>
+
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
+          <div class="px-6 py-4 bg-slate-50 border-b border-slate-200 font-bold text-sm text-slate-800">
+            Regisztrált Felhasználók
+          </div>
+          <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-slate-200 text-sm">
+              <thead class="bg-slate-50/50 text-slate-500 text-xs font-bold text-left uppercase">
+                <tr>
+                  <th class="px-6 py-3">Felhasználónév</th>
+                  <th class="px-6 py-3">Teljes Név</th>
+                  <th class="px-6 py-3">Jogosultság</th>
+                  <th class="px-6 py-3">Alapértelmezett Telephely</th>
+                  <th class="px-6 py-3">Státusz</th>
+                </tr>
+              </thead>
+              <tbody id="users-table-body" class="divide-y divide-slate-100 bg-white"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
+          <div class="px-6 py-4 bg-slate-50 border-b border-slate-200 font-bold text-sm text-slate-800">
+            Audit Eseménynapló (Utolsó 100 esemény)
+          </div>
+          <div class="overflow-x-auto max-h-96">
+            <table class="min-w-full divide-y divide-slate-200 text-xs">
+              <thead class="bg-slate-50/50 text-slate-500 font-bold text-left uppercase sticky top-0 bg-slate-50">
+                <tr>
+                  <th class="px-6 py-3">Időpont</th>
+                  <th class="px-6 py-3">Felhasználó</th>
+                  <th class="px-6 py-3">Művelet</th>
+                  <th class="px-6 py-3">Részletek</th>
+                </tr>
+              </thead>
+              <tbody id="audit-table-body" class="divide-y divide-slate-100 bg-white font-mono"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <!-- MODÁLOK -->
+  <!-- Ruha Modál -->
+  <div id="cloth-modal" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs hidden">
+    <div class="bg-white rounded-2xl shadow-2xl border border-slate-200 max-w-lg w-full p-6 space-y-4 max-h-[90vh] overflow-y-auto">
+      <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+        <h3 id="cloth-modal-title" class="text-lg font-bold text-slate-900">Munkaruha Adatlap</h3>
+        <button id="close-cloth-modal-btn" class="text-slate-400 hover:text-slate-600"><i data-lucide="x" class="w-5 h-5"></i></button>
+      </div>
+
+      <form id="cloth-form" class="space-y-3 text-sm">
+        <input type="hidden" id="cloth-form-id">
+        <div>
+          <label class="block text-xs font-bold text-slate-600 mb-1">Vonalkód *</label>
+          <input type="text" id="cloth-form-barcode" required class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-500 font-mono font-bold">
+        </div>
+        <div>
+          <label class="block text-xs font-bold text-slate-600 mb-1">Megnevezés *</label>
+          <input type="text" id="cloth-form-name" required placeholder="pl. Rövid ujjú póló, fehér" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-500">
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-bold text-slate-600 mb-1">Kategória</label>
+            <select id="cloth-form-category" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl">
+              <option value="Póló">Póló</option>
+              <option value="Köpeny">Köpeny</option>
+              <option value="Nadrág">Nadrág</option>
+              <option value="Kazak">Kazak</option>
+              <option value="Egyéb">Egyéb</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-600 mb-1">Szín</label>
+            <select id="cloth-form-color" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl">
+              <option value="Fehér">Fehér</option>
+              <option value="Zöld">Zöld</option>
+              <option value="Bottlezöld">Bottlezöld</option>
+              <option value="Kék">Kék</option>
+              <option value="Egyéb">Egyéb</option>
+            </select>
+          </div>
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-bold text-slate-600 mb-1">Méret</label>
+            <input type="text" id="cloth-form-size" placeholder="pl. L, XL, 52/105" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl">
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-600 mb-1">Cikkszám</label>
+            <input type="text" id="cloth-form-item-code" placeholder="pl. TSA1, W4S1" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl">
+          </div>
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-bold text-slate-600 mb-1">Telephely *</label>
+            <select id="cloth-form-location" required class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl">
+              <option value="1">1 - Jutai út 50.</option>
+              <option value="2">2 - Nagygát u. 1.</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-600 mb-1">Státusz</label>
+            <select id="cloth-form-status" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl">
+              <option value="ACTIVE">Aktív (Dolgozónál)</option>
+              <option value="IN_LAUNDRY">Mosásban</option>
+              <option value="RESERVE">Tartalék</option>
+              <option value="LOST">Elveszett / Nincs meg</option>
+              <option value="SCRAPPED">Selejt</option>
+            </select>
+          </div>
+        </div>
+        <div>
+          <label class="block text-xs font-bold text-slate-600 mb-1">Hozzárendelt Dolgozó</label>
+          <select id="cloth-form-employee" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl"></select>
+        </div>
+        <div>
+          <label class="block text-xs font-bold text-slate-600 mb-1">Megjegyzés</label>
+          <input type="text" id="cloth-form-notes" placeholder="pl. csere póló, 5 éve nincs meg..." class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl">
+        </div>
+
+        <div class="pt-4 flex justify-end space-x-3 border-t border-slate-100">
+          <button type="button" id="cancel-cloth-modal-btn" class="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-xl">Mégse</button>
+          <button type="submit" class="px-5 py-2 bg-brand-600 hover:bg-brand-700 text-white font-bold rounded-xl shadow-sm">Mentés</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Dolgozó Modál -->
+  <div id="employee-modal" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs hidden">
+    <div class="bg-white rounded-2xl shadow-2xl border border-slate-200 max-w-md w-full p-6 space-y-4">
+      <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+        <h3 id="employee-modal-title" class="text-lg font-bold text-slate-900">Új Dolgozó Rögzítése</h3>
+        <button id="close-employee-modal-btn" class="text-slate-400 hover:text-slate-600"><i data-lucide="x" class="w-5 h-5"></i></button>
+      </div>
+
+      <form id="employee-form" class="space-y-3 text-sm">
+        <input type="hidden" id="employee-form-id">
+        <div>
+          <label class="block text-xs font-bold text-slate-600 mb-1">Dolgozói Törzsszám / Kód *</label>
+          <input type="text" id="employee-form-code" required placeholder="pl. 0002" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-500 font-mono">
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-bold text-slate-600 mb-1">Vezetéknév *</label>
+            <input type="text" id="employee-form-last-name" required class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-500">
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-600 mb-1">Keresztnév</label>
+            <input type="text" id="employee-form-first-name" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-500">
+          </div>
+        </div>
+        <div>
+          <label class="block text-xs font-bold text-slate-600 mb-1">Telephely *</label>
+          <select id="employee-form-location" required class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl">
+            <option value="1">1 - Jutai út 50.</option>
+            <option value="2">2 - Nagygát u. 1.</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-xs font-bold text-slate-600 mb-1">Szekrény / Fakk szám</label>
+          <input type="text" id="employee-form-locker" placeholder="pl. A/12" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl">
+        </div>
+
+        <div class="pt-4 flex justify-end space-x-3 border-t border-slate-100">
+          <button type="button" id="cancel-employee-modal-btn" class="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-xl">Mégse</button>
+          <button type="submit" class="px-5 py-2 bg-brand-600 hover:bg-brand-700 text-white font-bold rounded-xl shadow-sm">Mentés</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Szállítólevél Modál -->
+  <div id="batch-modal" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/70 backdrop-blur-xs hidden p-4 overflow-y-auto">
+    <div class="bg-white rounded-2xl shadow-2xl border border-slate-200 max-w-3xl w-full p-8 space-y-6 my-auto">
+      <div id="printable-area" class="space-y-6 text-slate-800">
+        <div class="border-b-2 border-slate-800 pb-4 flex justify-between items-start">
+          <div>
+            <h1 class="text-2xl font-black tracking-tight text-slate-900">HGA Biomed Kft.</h1>
+            <p class="text-xs text-slate-600 font-semibold mt-1">MUNKARUHA MOSODAI ÁTADÁS-ÁTVÉTELI JEGYZÉK</p>
+          </div>
+          <div class="text-right">
+            <p class="text-xs text-slate-500 font-bold uppercase">Bizonylatszám</p>
+            <p id="print-batch-number" class="text-lg font-mono font-black text-slate-900">MOS-20260823-001</p>
+            <p id="print-batch-date" class="text-xs text-slate-500 font-medium mt-0.5">2026.08.23 10:30</p>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-6 bg-slate-50 p-4 rounded-xl text-xs border border-slate-200">
+          <div>
+            <span class="font-bold text-slate-500 uppercase block mb-1">Küldő / Kiadó Telephely:</span>
+            <p id="print-location-name" class="font-bold text-slate-900 text-sm">HGA Biomed Kaposvár, Jutai út 50.</p>
+            <p id="print-location-address" class="text-slate-600">7400 Kaposvár, Jutai út 50.</p>
+            <p class="text-slate-500 mt-1">Kezelő: <span id="print-user-name" class="font-semibold text-slate-800">Kovács István</span></p>
+          </div>
+          <div>
+            <span class="font-bold text-slate-500 uppercase block mb-1">Művelet Jellege & Cél:</span>
+            <p id="print-direction-label" class="font-black text-brand-700 text-sm">MOSODÁBA KÜLDVE (Tisztításra átadva)</p>
+            <p class="text-slate-600">Mosodai Szolgáltató részére</p>
+            <p class="text-slate-500 mt-1">Összes darabszám: <span id="print-total-count" class="font-black text-slate-900 text-sm">0 db</span></p>
+          </div>
+        </div>
+
+        <div id="print-category-breakdown" class="flex flex-wrap gap-2 text-xs"></div>
+
+        <table class="min-w-full divide-y divide-slate-300 text-xs">
+          <thead class="bg-slate-100 font-bold text-slate-700 text-left">
+            <tr>
+              <th class="py-2 px-3">Ssz.</th>
+              <th class="py-2 px-3">Vonalkód</th>
+              <th class="py-2 px-3">Megnevezés</th>
+              <th class="py-2 px-3">Méret</th>
+              <th class="py-2 px-3">Dolgozó Neve (Törzsszám)</th>
+            </tr>
+          </thead>
+          <tbody id="print-items-tbody" class="divide-y divide-slate-200"></tbody>
+        </table>
+
+        <div class="grid grid-cols-2 gap-12 pt-8 text-xs border-t border-slate-200">
+          <div class="text-center">
+            <div class="border-b border-slate-400 pb-8"></div>
+            <p class="mt-2 font-bold text-slate-700">Átadó (HGA Biomed képviselője)</p>
+          </div>
+          <div class="text-center">
+            <div class="border-b border-slate-400 pb-8"></div>
+            <p class="mt-2 font-bold text-slate-700">Átvevő (Mosoda képviselője / Futár)</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="flex justify-end space-x-3 pt-4 border-t border-slate-100">
+        <button id="close-batch-modal-btn" class="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-xl text-sm font-semibold">Bezárás</button>
+        <button onclick="window.print()" class="px-5 py-2 bg-slate-900 hover:bg-slate-800 text-white text-sm font-bold rounded-xl transition-all flex items-center space-x-2 shadow-sm">
+          <i data-lucide="printer" class="w-4 h-4"></i>
+          <span>Nyomtatás</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Felhasználó Modál -->
+  <div id="user-modal" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs hidden">
+    <div class="bg-white rounded-2xl shadow-2xl border border-slate-200 max-w-md w-full p-6 space-y-4">
+      <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+        <h3 class="text-lg font-bold text-slate-900">Új Rendszerfelhasználó</h3>
+        <button id="close-user-modal-btn" class="text-slate-400 hover:text-slate-600"><i data-lucide="x" class="w-5 h-5"></i></button>
+      </div>
+
+      <form id="user-form" class="space-y-3 text-sm">
+        <div>
+          <label class="block text-xs font-bold text-slate-600 mb-1">Felhasználónév *</label>
+          <input type="text" id="user-form-username" required class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-500">
+        </div>
+        <div>
+          <label class="block text-xs font-bold text-slate-600 mb-1">Jelszó *</label>
+          <input type="password" id="user-form-password" required class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-500">
+        </div>
+        <div>
+          <label class="block text-xs font-bold text-slate-600 mb-1">Teljes Név *</label>
+          <input type="text" id="user-form-fullname" required placeholder="pl. Kiss Anna" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-500">
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-bold text-slate-600 mb-1">Szerepkör</label>
+            <select id="user-form-role" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl">
+              <option value="operator">Operátor (Raktáros)</option>
+              <option value="admin">Adminisztrátor</option>
+              <option value="viewer">Megtekintő (Vezető)</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-600 mb-1">Alapért. Telephely</label>
+            <select id="user-form-location" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl">
+              <option value="1">1 - Jutai út 50.</option>
+              <option value="2">2 - Nagygát u. 1.</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="pt-4 flex justify-end space-x-3 border-t border-slate-100">
+          <button type="button" id="cancel-user-modal-btn" class="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-xl">Mégse</button>
+          <button type="submit" class="px-5 py-2 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-xl shadow-sm">Létrehozás</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script src="/js/audio.js"></script>
+  <script src="/js/api.js"></script>
+  <script src="/js/app.js"></script>
+</body>
+</html>

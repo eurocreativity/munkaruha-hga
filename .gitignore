@@ -1,0 +1,13 @@
+config.local.php
+data/munkaruha.db
+data/munkaruha.db-wal
+data/munkaruha.db-shm
+logs/*.log
+backups/*
+!backups/.htaccess
+node_modules/
+package-lock.json
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db

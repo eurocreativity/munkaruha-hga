@@ -1,0 +1,16 @@
+# HGA Biomed Munkaruha Rendszer - ISPConfig Apache Beállítások
+Options -Indexes
+
+<IfModule mod_headers.c>
+    Header set X-Frame-Options "SAMEORIGIN"
+    Header set X-Content-Type-Options "nosniff"
+    Header set X-XSS-Protection "1; mode=block"
+</IfModule>
+
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteRule ^config\.local\.php$ - [F,L]
+    RewriteRule ^schema_telepites\.sql$ - [F,L]
+    RewriteRule ^backups/ - [F,L]
+    RewriteRule ^logs/ - [F,L]
+</IfModule>
