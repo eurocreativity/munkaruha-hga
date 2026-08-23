@@ -128,7 +128,10 @@ $allLocations = $db->fetchAll("SELECT * FROM locations ORDER BY id ASC");
               <i data-lucide="file-spreadsheet" class="w-4 h-4"></i>
               <span>Leltár CSV</span>
             </a>
-            <?php if (isAdmin()): ?>
+              <a href="audit.php" class="<?php echo navClass('audit.php', $currentPage); ?>">
+                <i data-lucide="clipboard-list" class="w-4 h-4"></i>
+                <span>Napló</span>
+              </a>
               <a href="users.php" class="<?php echo navClass('users.php', $currentPage); ?>">
                 <i data-lucide="user-check" class="w-4 h-4"></i>
                 <span>Felhasználók</span>

@@ -3,6 +3,7 @@ require_once __DIR__ . '/includes/auth_check.php';
 require_once __DIR__ . '/classes/Database.php';
 
 $db = Database::getInstance();
+$currentUser = getCurrentUser();
 $activeLoc = getActiveLocationId();
 
 // Új ruha / Módosítás mentése szigorú logikai integritással
@@ -24,16 +25,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         // Dolgozó vizsgálata (tartalék-e)
         $isEmpReserve = true;
         if ($emp_id) {
-            $emp = $db->fetchOne("SELECT is_reserve FROM employees WHERE id = ?", [$emp_id]);
+            $emp = $db->fetchOne("SELECT is_reserve, full_name FROM employees WHERE id = ?", [$emp_id]);
             $isEmpReserve = ($emp && $emp['is_reserve'] == 1);
         }
 
         if ($action === 'create' && !empty($barcode) && !empty($name)) {
-            $status = $_POST['status'] ?? ($isEmpReserve ? 'RESERVE' : 'ACTIVE');
+            $status = $isEmpReserve ? 'RESERVE' : 'ACTIVE';
             $db->execute("
                 INSERT INTO clothes (barcode, item_code, name, category, color, size, employee_id, location_id, status, notes)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ", [$barcode, $item_code, $name, $category, $color, $size, $emp_id, $location_id, $status, $notes]);
+            $newId = $db->lastInsertId();
+
+            $db->execute("
+                INSERT INTO audit_logs (user_id, username, action, entity_type, entity_id, details, location_id)
+                VALUES (?, ?, 'CLOTH_CREATE', 'CLOTH', ?, ?, ?)
+            ", [$currentUser['id'], $currentUser['username'], $newId, "Új ruha rögzítve: {$name} ({$barcode})", $location_id]);
+
             setFlashMessage('success', "Munkaruha sikeresen hozzáadva: {$name} ({$barcode})");
         } elseif ($action === 'update' && !empty($_POST['cloth_id'])) {
             $clothId = intval($_POST['cloth_id']);
@@ -43,23 +51,42 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 FROM clothes c WHERE c.id = ?
             ", [$clothId]);
 
-            // Integritás védelem: Ha nyitott csomagban vagy mosásban van, a státusz automatikusan IN_LAUNDRY marad
-            if ($currentCloth && ($currentCloth['status'] === 'IN_LAUNDRY' || !empty($currentCloth['active_batch_number']))) {
-                $status = 'IN_LAUNDRY';
+            if (!$currentCloth) {
+                setFlashMessage('danger', 'A munkaruha nem található!');
+                redirect('clothes.php');
+            }
+
+            // Integritás védelem: Ha mosásban van vagy nyitott csomagban van, csak a megjegyzés módosítható!
+            if ($currentCloth['status'] === 'IN_LAUNDRY' || !empty($currentCloth['active_batch_number'])) {
+                $db->execute("UPDATE clothes SET notes = ? WHERE id = ?", [$notes, $clothId]);
+                
+                $db->execute("
+                    INSERT INTO audit_logs (user_id, username, action, entity_type, entity_id, details, location_id)
+                    VALUES (?, ?, 'CLOTH_NOTES_UPDATE', 'CLOTH', ?, ?, ?)
+                ", [$currentUser['id'], $currentUser['username'], $clothId, "Zárolt ruha megjegyzése módosítva ({$currentCloth['barcode']}): '{$notes}'", $currentCloth['location_id']]);
+
+                setFlashMessage('warning', "A ruha adatai (dolgozó, státusz, telephely) zárolva vannak a mosodai folyamat miatt. Csak a megjegyzés lett frissítve!");
             } else {
+                // Normál állapotú ruha szerkesztése
                 $postedStatus = $_POST['status'] ?? '';
                 if ($postedStatus === 'LOST' || $postedStatus === 'SCRAPPED') {
                     $status = $postedStatus;
                 } else {
                     $status = $isEmpReserve ? 'RESERVE' : 'ACTIVE';
                 }
-            }
 
-            $db->execute("
-                UPDATE clothes SET barcode = ?, item_code = ?, name = ?, category = ?, color = ?, size = ?, employee_id = ?, location_id = ?, status = ?, notes = ?
-                WHERE id = ?
-            ", [$barcode, $item_code, $name, $category, $color, $size, $emp_id, $location_id, $status, $notes, $clothId]);
-            setFlashMessage('success', "Munkaruha adatai sikeresen módosítva: {$barcode}");
+                $db->execute("
+                    UPDATE clothes SET barcode = ?, item_code = ?, name = ?, category = ?, color = ?, size = ?, employee_id = ?, location_id = ?, status = ?, notes = ?
+                    WHERE id = ?
+                ", [$barcode, $item_code, $name, $category, $color, $size, $emp_id, $location_id, $status, $notes, $clothId]);
+
+                $db->execute("
+                    INSERT INTO audit_logs (user_id, username, action, entity_type, entity_id, details, location_id)
+                    VALUES (?, ?, 'CLOTH_UPDATE', 'CLOTH', ?, ?, ?)
+                ", [$currentUser['id'], $currentUser['username'], $clothId, "Ruha adatai módosítva ({$barcode}) - Dolgozó ID: {$emp_id}, Státusz: {$status}", $location_id]);
+
+                setFlashMessage('success', "Munkaruha adatai sikeresen módosítva: {$barcode}");
+            }
         }
         redirect('clothes.php');
     }
@@ -253,10 +280,10 @@ require_once __DIR__ . '/includes/header.php';
     <!-- Mosodai státusz zárolás figyelmeztető banner -->
     <div id="laundry-lock-banner" class="hidden p-3.5 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-900 space-y-1">
       <div class="font-bold flex items-center space-x-1.5">
-        <i data-lucide="clock" class="w-4 h-4 text-amber-600"></i>
-        <span>Ez a munkaruha zárolt státuszú!</span>
+        <i data-lucide="lock" class="w-4 h-4 text-amber-600"></i>
+        <span>Ez a munkaruha zárolt állapotban van!</span>
       </div>
-      <p id="laundry-lock-text" class="text-amber-800"></p>
+      <p id="laundry-lock-text" class="text-amber-800 leading-relaxed"></p>
     </div>
 
     <form method="POST" action="clothes.php" class="space-y-3 text-sm">
@@ -341,13 +368,22 @@ require_once __DIR__ . '/includes/header.php';
 
       <div class="pt-4 flex justify-end space-x-3 border-t border-slate-100">
         <button type="button" onclick="document.getElementById('cloth-modal').classList.add('hidden')" class="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-xl">Mégse</button>
-        <button type="submit" class="px-5 py-2 bg-brand-600 hover:bg-brand-700 text-white font-bold rounded-xl shadow-sm">Mentés</button>
+        <button type="submit" id="cloth-modal-submit-btn" class="px-5 py-2 bg-brand-600 hover:bg-brand-700 text-white font-bold rounded-xl shadow-sm">Mentés</button>
       </div>
     </form>
   </div>
 </div>
 
 <script>
+const fieldsToLock = ['cloth-form-barcode', 'cloth-form-name', 'cloth-form-category', 'cloth-form-color', 'cloth-form-size', 'cloth-form-item-code', 'cloth-form-location', 'cloth-form-status', 'cloth-form-employee'];
+
+function setFieldsDisabled(disabled) {
+  fieldsToLock.forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.disabled = disabled;
+  });
+}
+
 function openClothModal() {
   document.getElementById('cloth-modal-title').textContent = 'Új Munkaruha Hozzáadása';
   document.getElementById('cloth-form-action').value = 'create';
@@ -358,7 +394,7 @@ function openClothModal() {
   document.getElementById('cloth-form-item-code').value = '';
   document.getElementById('cloth-form-notes').value = '';
   document.getElementById('laundry-lock-banner').classList.add('hidden');
-  document.getElementById('cloth-form-status').disabled = false;
+  setFieldsDisabled(false);
   document.getElementById('cloth-modal').classList.remove('hidden');
 }
 
@@ -382,14 +418,14 @@ function editCloth(c) {
     const banner = document.getElementById('laundry-lock-banner');
     banner.classList.remove('hidden');
     if (c.active_batch_number) {
-      document.getElementById('laundry-lock-text').innerHTML = `Ez a munkaruha jelenleg a(z) <strong class="font-mono">${c.active_batch_number}</strong> számú <strong>NYITOTT csomagban</strong> van! A csomag lezárása vagy kiürítése a <a href="scanner.php" class="underline font-bold text-amber-950">Gyors Vonalkód Olvasó</a> oldalon végezhető el.`;
+      document.getElementById('laundry-lock-text').innerHTML = `Ez a munkaruha jelenleg a(z) <strong class="font-mono bg-amber-200 px-1 py-0.5 rounded">${c.active_batch_number}</strong> számú <strong>NYITOTT csomagban</strong> van!<br>Az adatai zárolva vannak. A csomag lezárása vagy kiürítése a <a href="scanner.php" class="underline font-bold text-amber-950">Gyors Vonalkód Olvasó</a> oldalon végezhető el.`;
     } else {
-      document.getElementById('laundry-lock-text').innerHTML = `Ez a munkaruha jelenleg <strong>mosodában van</strong>! A státusza a logikai integritás megőrzése érdekében zárolva van. Visszavételezése a <strong>Visszavétel mosásból (MOS-BE)</strong> menüpontban történik.`;
+      document.getElementById('laundry-lock-text').innerHTML = `Ez a munkaruha jelenleg <strong>mosodában van</strong>!<br>A státusz és a dolgozói hozzárendelés zárolva van. Visszavételezése a <strong>Visszavétel mosásból (MOS-BE)</strong> menüpontban történik.`;
     }
-    document.getElementById('cloth-form-status').disabled = true;
+    setFieldsDisabled(true);
   } else {
     document.getElementById('laundry-lock-banner').classList.add('hidden');
-    document.getElementById('cloth-form-status').disabled = false;
+    setFieldsDisabled(false);
   }
 
   document.getElementById('cloth-modal').classList.remove('hidden');
