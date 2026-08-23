@@ -237,7 +237,7 @@ require_once __DIR__ . '/includes/header.php';
       <button onclick="document.getElementById('user-modal').classList.add('hidden')" class="text-slate-400 hover:text-slate-600"><i data-lucide="x" class="w-5 h-5"></i></button>
     </div>
 
-    <form method="POST" action="users.php" class="space-y-3 text-sm">
+    <form id="user-form" method="POST" action="users.php" onsubmit="return validateUserForm(event)" class="space-y-3 text-sm">
       <input type="hidden" name="csrf_token" value="<?php echo getCsrfToken(); ?>">
       <input type="hidden" name="user_action" id="user-form-action" value="create">
       <input type="hidden" name="user_id" id="user-form-id" value="">
@@ -249,7 +249,8 @@ require_once __DIR__ . '/includes/header.php';
 
       <div>
         <label class="block text-xs font-bold text-slate-600 mb-1">Email Cím (Értesítésekhez & Jelszóvisszaállításhoz)</label>
-        <input type="email" name="email" id="user-form-email" placeholder="pl. kiss.anna@hgabiomed.hu" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-500">
+        <input type="text" name="email" id="user-form-email" placeholder="pl. kiss.anna@hgabiomed.hu" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-500 transition-colors">
+        <div id="user-email-msg" class="text-xs mt-1 hidden font-semibold"></div>
       </div>
 
       <div>
@@ -312,6 +313,80 @@ require_once __DIR__ . '/includes/header.php';
 </div>
 
 <script>
+function isValidEmail(email) {
+  if (!email) return false;
+  // Szigorú regex: kötelező @, domain név, pont, és legalább 2 betűs TLD (pl. .hu, .com)
+  const re = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+  return re.test(String(email).trim().toLowerCase());
+}
+
+function checkEmailLive() {
+  const emailInput = document.getElementById('user-form-email');
+  const msgEl = document.getElementById('user-email-msg');
+  const val = emailInput.value.trim();
+  const sendInvite = document.getElementById('send-invitation-cb') ? document.getElementById('send-invitation-cb').checked : false;
+  const isCreate = document.getElementById('user-form-action').value === 'create';
+
+  if (!val) {
+    if (isCreate && sendInvite) {
+      emailInput.classList.remove('border-slate-200', 'border-emerald-500', 'bg-emerald-50/20');
+      emailInput.classList.add('border-red-500', 'bg-red-50/40');
+      msgEl.textContent = '⚠️ Meghívó küldéséhez kötelező megadni az email címet!';
+      msgEl.className = 'text-xs mt-1 text-red-600 font-bold';
+      msgEl.classList.remove('hidden');
+      return false;
+    } else {
+      emailInput.classList.remove('border-red-500', 'border-emerald-500', 'bg-red-50/40', 'bg-emerald-50/20');
+      emailInput.classList.add('border-slate-200');
+      msgEl.classList.add('hidden');
+      return true;
+    }
+  }
+
+  if (!isValidEmail(val)) {
+    emailInput.classList.remove('border-slate-200', 'border-emerald-500', 'bg-emerald-50/20');
+    emailInput.classList.add('border-red-500', 'bg-red-50/40');
+    msgEl.textContent = '⚠️ Érvénytelen formátum! Hiányzik a domain (pl. .hu vagy .com). Helyes példa: nev@ceg.hu';
+    msgEl.className = 'text-xs mt-1 text-red-600 font-bold';
+    msgEl.classList.remove('hidden');
+    return false;
+  } else {
+    emailInput.classList.remove('border-red-500', 'border-slate-200', 'bg-red-50/40');
+    emailInput.classList.add('border-emerald-500', 'bg-emerald-50/20');
+    msgEl.textContent = '✓ Helyes email formátum';
+    msgEl.className = 'text-xs mt-1 text-emerald-600 font-semibold';
+    msgEl.classList.remove('hidden');
+    return true;
+  }
+}
+
+document.getElementById('user-form-email').addEventListener('input', checkEmailLive);
+document.getElementById('user-form-email').addEventListener('blur', checkEmailLive);
+
+function validateUserForm(e) {
+  const emailInput = document.getElementById('user-form-email');
+  const emailVal = emailInput.value.trim();
+  const sendInvite = document.getElementById('send-invitation-cb') ? document.getElementById('send-invitation-cb').checked : false;
+  const isCreate = document.getElementById('user-form-action').value === 'create';
+  const msgEl = document.getElementById('user-email-msg');
+
+  if (isCreate && sendInvite && !emailVal) {
+    e.preventDefault();
+    emailInput.focus();
+    checkEmailLive();
+    return false;
+  }
+
+  if (emailVal && !isValidEmail(emailVal)) {
+    e.preventDefault();
+    emailInput.focus();
+    checkEmailLive();
+    return false;
+  }
+
+  return true;
+}
+
 function toggleInvitationMode() {
   const cb = document.getElementById('send-invitation-cb');
   const passGroup = document.getElementById('password-group-create');
@@ -320,12 +395,11 @@ function toggleInvitationMode() {
   if (cb.checked) {
     passGroup.classList.add('hidden');
     passInput.required = false;
-    document.getElementById('user-form-email').required = true;
   } else {
     passGroup.classList.remove('hidden');
     passInput.required = true;
-    document.getElementById('user-form-email').required = false;
   }
+  checkEmailLive();
 }
 
 function openNewUserModal() {
@@ -336,6 +410,10 @@ function openNewUserModal() {
   document.getElementById('user-form-username').readOnly = false;
   document.getElementById('user-form-email').value = '';
   document.getElementById('user-form-fullname').value = '';
+  document.getElementById('user-email-msg').classList.add('hidden');
+  document.getElementById('user-form-email').classList.remove('border-red-500', 'border-emerald-500', 'bg-red-50/40', 'bg-emerald-50/20');
+  document.getElementById('user-form-email').classList.add('border-slate-200');
+
   document.getElementById('invite-option-group').classList.remove('hidden');
   document.getElementById('send-invitation-cb').checked = true;
   toggleInvitationMode();
@@ -354,6 +432,10 @@ function openEditUserModal(u) {
   document.getElementById('user-form-fullname').value = u.full_name;
   document.getElementById('user-form-role').value = u.role;
   document.getElementById('user-form-location').value = u.default_location_id || '';
+  document.getElementById('user-email-msg').classList.add('hidden');
+  document.getElementById('user-form-email').classList.remove('border-red-500', 'border-emerald-500', 'bg-red-50/40', 'bg-emerald-50/20');
+  document.getElementById('user-form-email').classList.add('border-slate-200');
+
   document.getElementById('invite-option-group').classList.add('hidden');
   document.getElementById('password-group-create').classList.add('hidden');
   document.getElementById('user-form-password').required = false;
