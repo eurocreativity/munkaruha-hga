@@ -37,10 +37,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             setFlashMessage('success', "Munkaruha sikeresen hozzáadva: {$name} ({$barcode})");
         } elseif ($action === 'update' && !empty($_POST['cloth_id'])) {
             $clothId = intval($_POST['cloth_id']);
-            $currentCloth = $db->fetchOne("SELECT status FROM clothes WHERE id = ?", [$clothId]);
+            $currentCloth = $db->fetchOne("
+                SELECT c.*, 
+                  (SELECT lb.batch_number FROM laundry_items li JOIN laundry_batches lb ON li.batch_id = lb.id WHERE li.cloth_id = c.id AND lb.status = 'IN_PROGRESS' LIMIT 1) as active_batch_number
+                FROM clothes c WHERE c.id = ?
+            ", [$clothId]);
 
-            // Integritás védelem: Ha mosásban van, a státusz nem írható felül sima űrlapból
-            if ($currentCloth && $currentCloth['status'] === 'IN_LAUNDRY') {
+            // Integritás védelem: Ha nyitott csomagban vagy mosásban van, a státusz automatikusan IN_LAUNDRY marad
+            if ($currentCloth && ($currentCloth['status'] === 'IN_LAUNDRY' || !empty($currentCloth['active_batch_number']))) {
                 $status = 'IN_LAUNDRY';
             } else {
                 $postedStatus = $_POST['status'] ?? '';
@@ -94,7 +98,9 @@ if ($search) {
 
 $whereClause = implode(" AND ", $where);
 $clothes = $db->fetchAll("
-    SELECT c.*, e.full_name as employee_name, e.employee_code, e.is_reserve as employee_is_reserve, l.short_name as location_short
+    SELECT c.*, e.full_name as employee_name, e.employee_code, e.is_reserve as employee_is_reserve, l.short_name as location_short,
+           (SELECT lb.batch_number FROM laundry_items li JOIN laundry_batches lb ON li.batch_id = lb.id WHERE li.cloth_id = c.id AND lb.status = 'IN_PROGRESS' ORDER BY li.id DESC LIMIT 1) as active_batch_number,
+           (SELECT lb.batch_number FROM laundry_items li JOIN laundry_batches lb ON li.batch_id = lb.id WHERE li.cloth_id = c.id AND lb.status = 'COMPLETED' AND lb.direction = 'OUT' ORDER BY li.id DESC LIMIT 1) as last_batch_number
     FROM clothes c
     LEFT JOIN employees e ON c.employee_id = e.id
     LEFT JOIN locations l ON c.location_id = l.id
@@ -192,25 +198,32 @@ require_once __DIR__ . '/includes/header.php';
                 <td class="px-6 py-3.5 font-medium text-slate-900"><?php echo escape($c['employee_name'] ?: 'Tartalék'); ?></td>
                 <td class="px-6 py-3.5 text-slate-600"><?php echo escape($c['location_short'] ?: '-'); ?></td>
                 <td class="px-6 py-3.5">
-                  <?php 
-                    $badges = [
-                      'ACTIVE' => 'bg-emerald-100 text-emerald-800',
-                      'IN_LAUNDRY' => 'bg-amber-100 text-amber-800',
-                      'RESERVE' => 'bg-blue-100 text-blue-800',
-                      'LOST' => 'bg-red-100 text-red-800',
-                      'SCRAPPED' => 'bg-slate-200 text-slate-700'
-                    ];
-                    $labels = [
-                      'ACTIVE' => 'Aktív (Dolgozónál)',
-                      'IN_LAUNDRY' => 'Mosásban',
-                      'RESERVE' => 'Tartalék',
-                      'LOST' => 'Hiányzó / Elveszett',
-                      'SCRAPPED' => 'Selejtezve'
-                    ];
-                  ?>
-                  <span class="px-2.5 py-1 text-xs font-bold rounded-full <?php echo $badges[$c['status']] ?? 'bg-slate-100'; ?>">
-                    <?php echo $labels[$c['status']] ?? $c['status']; ?>
-                  </span>
+                  <?php if (!empty($c['active_batch_number'])): ?>
+                    <span class="px-2.5 py-1 text-xs font-bold rounded-full bg-amber-100 text-amber-900 border border-amber-300 flex items-center w-max space-x-1" title="Folyamatban lévő csomagban: <?php echo $c['active_batch_number']; ?>">
+                      <span class="w-1.5 h-1.5 rounded-full bg-amber-500 animate-ping"></span>
+                      <span>Nyitott csomagban</span>
+                    </span>
+                  <?php else: ?>
+                    <?php 
+                      $badges = [
+                        'ACTIVE' => 'bg-emerald-100 text-emerald-800',
+                        'IN_LAUNDRY' => 'bg-amber-100 text-amber-800',
+                        'RESERVE' => 'bg-blue-100 text-blue-800',
+                        'LOST' => 'bg-red-100 text-red-800',
+                        'SCRAPPED' => 'bg-slate-200 text-slate-700'
+                      ];
+                      $labels = [
+                        'ACTIVE' => 'Aktív (Dolgozónál)',
+                        'IN_LAUNDRY' => 'Mosásban',
+                        'RESERVE' => 'Tartalék',
+                        'LOST' => 'Hiányzó / Elveszett',
+                        'SCRAPPED' => 'Selejtezve'
+                      ];
+                    ?>
+                    <span class="px-2.5 py-1 text-xs font-bold rounded-full <?php echo $badges[$c['status']] ?? 'bg-slate-100'; ?>">
+                      <?php echo $labels[$c['status']] ?? $c['status']; ?>
+                    </span>
+                  <?php endif; ?>
                 </td>
                 <td class="px-6 py-3.5 text-right">
                   <button onclick='editCloth(<?php echo json_encode($c); ?>)' class="p-1.5 text-slate-500 hover:text-brand-600 hover:bg-brand-50 rounded-lg transition-all" title="Szerkesztés">
@@ -241,11 +254,9 @@ require_once __DIR__ . '/includes/header.php';
     <div id="laundry-lock-banner" class="hidden p-3.5 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-900 space-y-1">
       <div class="font-bold flex items-center space-x-1.5">
         <i data-lucide="clock" class="w-4 h-4 text-amber-600"></i>
-        <span>Ez a munkaruha jelenleg mosodában van!</span>
+        <span>Ez a munkaruha zárolt státuszú!</span>
       </div>
-      <p class="text-amber-800">
-        A státusza a logikai integritás megőrzése érdekében zárolva van. Visszavételezése a <strong>Visszavétel mosásból (MOS-BE)</strong> menüpontban történik.
-      </p>
+      <p id="laundry-lock-text" class="text-amber-800"></p>
     </div>
 
     <form method="POST" action="clothes.php" class="space-y-3 text-sm">
@@ -366,9 +377,15 @@ function editCloth(c) {
   document.getElementById('cloth-form-employee').value = c.employee_id || '';
   document.getElementById('cloth-form-notes').value = c.notes || '';
 
-  // Logikai integritási zár: Ha mosásban van, a státusz nem módosítható kézzel
-  if (c.status === 'IN_LAUNDRY') {
-    document.getElementById('laundry-lock-banner').classList.remove('hidden');
+  // Logikai integritási zár: Ha mosásban van VAGY nyitott csomagban van
+  if (c.status === 'IN_LAUNDRY' || c.active_batch_number) {
+    const banner = document.getElementById('laundry-lock-banner');
+    banner.classList.remove('hidden');
+    if (c.active_batch_number) {
+      document.getElementById('laundry-lock-text').innerHTML = `Ez a munkaruha jelenleg a(z) <strong class="font-mono">${c.active_batch_number}</strong> számú <strong>NYITOTT csomagban</strong> van! A csomag lezárása vagy kiürítése a <a href="scanner.php" class="underline font-bold text-amber-950">Gyors Vonalkód Olvasó</a> oldalon végezhető el.`;
+    } else {
+      document.getElementById('laundry-lock-text').innerHTML = `Ez a munkaruha jelenleg <strong>mosodában van</strong>! A státusza a logikai integritás megőrzése érdekében zárolva van. Visszavételezése a <strong>Visszavétel mosásból (MOS-BE)</strong> menüpontban történik.`;
+    }
     document.getElementById('cloth-form-status').disabled = true;
   } else {
     document.getElementById('laundry-lock-banner').classList.add('hidden');
