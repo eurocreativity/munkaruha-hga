@@ -10,34 +10,39 @@ if (!file_exists($configLocalFile)) {
 }
 require_once $configLocalFile;
 
+// Session indítás biztonságos cookie paraméterekkel
 if (session_status() === PHP_SESSION_NONE) {
-    ini_set('session.use_strict_mode', 1);
-    ini_set('session.gc_maxlifetime', 28800);
-    ini_set('session.cookie_lifetime', 0);
-    ini_set('session.cookie_httponly', 1);
-
     $isSecure = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on') ||
-        (isset($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https');
-    ini_set('session.cookie_secure', $isSecure ? 1 : 0);
-    ini_set('session.cookie_samesite', 'Lax');
+        (isset($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https') ||
+        (isset($_SERVER['SERVER_PORT']) && $_SERVER['SERVER_PORT'] == 8443);
 
-    session_start();
+    // PHP 7.3+ szabványos session cookie beállítás
+    if (PHP_VERSION_ID >= 70300) {
+        session_set_cookie_params([
+            'lifetime' => 0,
+            'path' => '/',
+            'domain' => '',
+            'secure' => $isSecure,
+            'httponly' => true,
+            'samesite' => 'Lax'
+        ]);
+    } else {
+        session_set_cookie_params(0, '/; samesite=Lax', '', $isSecure, true);
+    }
+
+    @session_start();
 }
 
+// Biztonsági fejlécek
 if (!headers_sent()) {
     header("X-Frame-Options: SAMEORIGIN");
     header("X-Content-Type-Options: nosniff");
     header("X-XSS-Protection: 1; mode=block");
-    if ((isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on') || 
-        (isset($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https')) {
-        header("Strict-Transport-Security: max-age=31536000; includeSubDomains");
-    }
 }
 
-ini_set('display_errors', 0);
-ini_set('log_errors', 1);
-ini_set('error_log', __DIR__ . '/logs/php_errors.log');
-error_reporting(E_ALL);
+// Hibakezelés (biztonságos hibamegjelenítés teszteléskor)
+ini_set('display_errors', 1);
+error_reporting(E_ALL & ~E_NOTICE & ~E_DEPRECATED & ~E_WARNING);
 
 function getAppVersion() {
     $versionFile = __DIR__ . '/version.txt';
@@ -54,10 +59,14 @@ function getAppVersion() {
 
 function generateCsrfToken() {
     if (session_status() !== PHP_SESSION_ACTIVE) {
-        throw new Exception('Session not started.');
+        @session_start();
     }
     if (!isset($_SESSION['csrf_token'])) {
-        $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+        try {
+            $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+        } catch (Exception $e) {
+            $_SESSION['csrf_token'] = bin2hex(openssl_random_pseudo_bytes(32));
+        }
     }
     return $_SESSION['csrf_token'];
 }
