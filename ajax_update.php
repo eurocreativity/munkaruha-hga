@@ -2,25 +2,32 @@
 /**
  * AJAX Frissítő & Biztonsági Mentés Végpont (ISPConfig, Synology & GitHub)
  */
+ob_start();
+ini_set('display_errors', 0);
+error_reporting(0);
+
 header('Content-Type: application/json; charset=utf-8');
 
 require_once __DIR__ . '/config.php';
 require_once __DIR__ . '/classes/Database.php';
 require_once __DIR__ . '/classes/Settings.php';
 
-if (!isLoggedIn() || !isAdmin()) {
-    http_response_code(403);
-    echo json_encode(['success' => false, 'message' => 'Hozzáférés megtagadva!']);
+function jsonResponse($data, $statusCode = 200) {
+    if (ob_get_length()) ob_clean();
+    http_response_code($statusCode);
+    echo json_encode($data, JSON_UNESCAPED_UNICODE);
     exit();
+}
+
+if (!isLoggedIn() || !isAdmin()) {
+    jsonResponse(['success' => false, 'message' => 'Hozzáférés megtagadva!'], 403);
 }
 
 $action = $_POST['action'] ?? $_GET['action'] ?? '';
 $csrf = $_POST['csrf_token'] ?? $_GET['csrf_token'] ?? '';
 
 if (!validateCsrfToken($csrf)) {
-    http_response_code(400);
-    echo json_encode(['success' => false, 'message' => 'Érvénytelen CSRF token!']);
-    exit();
+    jsonResponse(['success' => false, 'message' => 'Érvénytelen CSRF token!'], 400);
 }
 
 $settingsObj = new Settings();
@@ -35,6 +42,8 @@ if ($action === 'check_update') {
     $ch = curl_init($url);
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
     curl_setopt($ch, CURLOPT_USERAGENT, 'HGA-Munkaruha-Updater');
+    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+    curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
     if (!empty($token)) {
         curl_setopt($ch, CURLOPT_HTTPHEADER, ["Authorization: Bearer {$token}", "Accept: application/vnd.github.v3+json"]);
     }
@@ -50,7 +59,7 @@ if ($action === 'check_update') {
         $date = $json['commit']['author']['date'] ?? '';
         $updateAvailable = (!empty($remoteSha) && strpos($localCommit, substr($remoteSha, 0, 8)) === false && $remoteSha !== $localCommit);
 
-        echo json_encode([
+        jsonResponse([
             'success' => true,
             'update_available' => $updateAvailable,
             'local_commit' => $localCommit ?: '1.0.0',
@@ -60,33 +69,29 @@ if ($action === 'check_update') {
             'author' => $author
         ]);
     } else {
-        echo json_encode([
+        jsonResponse([
             'success' => true,
             'update_available' => false,
             'local_commit' => $localCommit ?: '1.0.0',
             'message' => 'A GitHub API nem adott vissza újabb verziót, vagy privát repo token szükséges.'
         ]);
     }
-    exit();
 }
 
 // 2. Frissítés letöltése és alkalmazása (Git pull vagy ZIP)
 if ($action === 'apply_update') {
     // Ha van helyi .git mappa és futtatható a git parancs, először megpróbáljuk a natív git pull-t
-    $isGitPulled = false;
     if (is_dir(__DIR__ . '/.git') && function_exists('shell_exec')) {
         $disabled = ini_get('disable_functions');
         if (empty($disabled) || strpos($disabled, 'shell_exec') === false) {
             try {
                 $gitOutput = @shell_exec('git pull origin main 2>&1');
                 if ($gitOutput && (strpos($gitOutput, 'Updating') !== false || strpos($gitOutput, 'Already up to date') !== false)) {
-                    $isGitPulled = true;
                     $headSha = @shell_exec('git rev-parse HEAD');
                     if ($headSha) {
-                        file_put_contents($versionFile, trim($headSha));
+                        @file_put_contents($versionFile, trim($headSha));
                     }
-                    echo json_encode(['success' => true, 'method' => 'git_pull', 'message' => 'Sikeres frissítés Git-en keresztül!']);
-                    exit();
+                    jsonResponse(['success' => true, 'method' => 'git_pull', 'message' => 'Sikeres frissítés Git-en keresztül!']);
                 }
             } catch (Exception $e) {
                 // Fallback to ZIP download
@@ -96,18 +101,25 @@ if ($action === 'apply_update') {
 
     // ZIP alapú letöltés (ISPConfig / Synology Web Station alatt a legmegbízhatóbb)
     $zipUrl = "https://api.github.com/repos/{$repo}/zipball/main";
-    $zipFile = __DIR__ . '/backups/update_temp.zip';
+    $backupDir = __DIR__ . '/backups';
+    $zipFile = $backupDir . '/update_temp.zip';
 
-    if (!is_dir(__DIR__ . '/backups')) {
-        mkdir(__DIR__ . '/backups', 0755, true);
+    if (!is_dir($backupDir)) {
+        @mkdir($backupDir, 0777, true);
+    }
+
+    $fp = @fopen($zipFile, 'w+');
+    if (!$fp) {
+        jsonResponse(['success' => false, 'message' => 'Nem sikerült megnyitni az ideiglenes mentési mappát (írási jogosultság hiányzik a backups mappához)!']);
     }
 
     $ch = curl_init($zipUrl);
-    $fp = fopen($zipFile, 'w+');
     curl_setopt($ch, CURLOPT_TIMEOUT, 90);
     curl_setopt($ch, CURLOPT_FILE, $fp);
     curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
     curl_setopt($ch, CURLOPT_USERAGENT, 'HGA-Munkaruha-Updater');
+    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+    curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
     if (!empty($token)) {
         curl_setopt($ch, CURLOPT_HTTPHEADER, ["Authorization: Bearer {$token}"]);
     }
@@ -119,7 +131,10 @@ if ($action === 'apply_update') {
     if ($httpCode === 200 && class_exists('ZipArchive')) {
         $zip = new ZipArchive();
         if ($zip->open($zipFile) === TRUE) {
-            $extractPath = __DIR__ . '/backups/extracted/';
+            $extractPath = $backupDir . '/extracted/';
+            if (!is_dir($extractPath)) {
+                @mkdir($extractPath, 0777, true);
+            }
             $zip->extractTo($extractPath);
             $zip->close();
 
@@ -139,35 +154,58 @@ if ($action === 'apply_update') {
                     if (strpos($iterator->getSubPathName(), 'logs/') === 0) continue;
 
                     if ($item->isDir()) {
-                        if (!is_dir($target)) mkdir($target, 0755, true);
+                        if (!is_dir($target)) @mkdir($target, 0777, true);
                     } else {
-                        copy($item, $target);
+                        @copy($item, $target);
                     }
                 }
             }
 
             @unlink($zipFile);
+            
             // Kicsomagolt ideiglenes mappa törlése
-            array_map('unlink', glob("$extractPath/*.*"));
+            $files = new RecursiveIteratorIterator(
+                new RecursiveDirectoryIterator($extractPath, RecursiveDirectoryIterator::SKIP_DOTS),
+                RecursiveIteratorIterator::CHILD_FIRST
+            );
+            foreach ($files as $fileinfo) {
+                $todo = ($fileinfo->isDir() ? 'rmdir' : 'unlink');
+                @$todo($fileinfo->getRealPath());
+            }
             @rmdir($extractPath);
 
             // Verzió frissítése
             $remoteSha = $_POST['remote_commit'] ?? '';
             if ($remoteSha) {
-                file_put_contents($versionFile, trim($remoteSha));
+                @file_put_contents($versionFile, trim($remoteSha));
+            } else {
+                // Lekérjük a legfrissebb sha-t
+                $url = "https://api.github.com/repos/{$repo}/commits/main";
+                $ch = curl_init($url);
+                curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+                curl_setopt($ch, CURLOPT_USERAGENT, 'HGA-Munkaruha-Updater');
+                curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+                if (!empty($token)) curl_setopt($ch, CURLOPT_HTTPHEADER, ["Authorization: Bearer {$token}"]);
+                $res = curl_exec($ch);
+                curl_close($ch);
+                $json = json_decode($res, true);
+                if (!empty($json['sha'])) {
+                    @file_put_contents($versionFile, trim($json['sha']));
+                }
             }
 
-            echo json_encode(['success' => true, 'method' => 'zip_download', 'message' => 'Frissítés sikeresen telepítve!']);
-            exit();
+            jsonResponse(['success' => true, 'method' => 'zip_download', 'message' => 'Frissítés sikeresen telepítve!']);
+        } else {
+            jsonResponse(['success' => false, 'message' => 'Nem sikerült kicsomagolni a letöltött ZIP csomagot!']);
         }
     }
 
-    echo json_encode(['success' => false, 'message' => 'Hiba történt a frissítő csomag letöltése vagy kicsomagolása közben!']);
-    exit();
+    jsonResponse(['success' => false, 'message' => 'Hiba történt a frissítő csomag letöltése közben (HTTP ' . $httpCode . ')!']);
 }
 
 // 3. Biztonsági mentés generálása
 if ($action === 'download_backup') {
+    if (ob_get_length()) ob_clean();
     $db = Database::getInstance();
     $pdo = $db->getConnection();
 
@@ -195,3 +233,5 @@ if ($action === 'download_backup') {
     echo $sql;
     exit();
 }
+
+jsonResponse(['success' => false, 'message' => 'Ismeretlen művelet!'], 400);
