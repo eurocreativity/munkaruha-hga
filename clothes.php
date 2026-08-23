@@ -5,7 +5,7 @@ require_once __DIR__ . '/classes/Database.php';
 $db = Database::getInstance();
 $activeLoc = getActiveLocationId();
 
-// Új ruha / Módosítás mentése
+// Új ruha / Módosítás mentése szigorú logikai integritással
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = $_POST['form_action'] ?? '';
     $csrf = $_POST['csrf_token'] ?? '';
@@ -18,11 +18,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $size = trim($_POST['size'] ?? '');
         $item_code = trim($_POST['item_code'] ?? '');
         $location_id = intval($_POST['location_id'] ?? 1);
-        $status = $_POST['status'] ?? 'ACTIVE';
         $emp_id = !empty($_POST['employee_id']) ? intval($_POST['employee_id']) : null;
         $notes = trim($_POST['notes'] ?? '');
 
+        // Dolgozó vizsgálata (tartalék-e)
+        $isEmpReserve = true;
+        if ($emp_id) {
+            $emp = $db->fetchOne("SELECT is_reserve FROM employees WHERE id = ?", [$emp_id]);
+            $isEmpReserve = ($emp && $emp['is_reserve'] == 1);
+        }
+
         if ($action === 'create' && !empty($barcode) && !empty($name)) {
+            $status = $_POST['status'] ?? ($isEmpReserve ? 'RESERVE' : 'ACTIVE');
             $db->execute("
                 INSERT INTO clothes (barcode, item_code, name, category, color, size, employee_id, location_id, status, notes)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -30,11 +37,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             setFlashMessage('success', "Munkaruha sikeresen hozzáadva: {$name} ({$barcode})");
         } elseif ($action === 'update' && !empty($_POST['cloth_id'])) {
             $clothId = intval($_POST['cloth_id']);
+            $currentCloth = $db->fetchOne("SELECT status FROM clothes WHERE id = ?", [$clothId]);
+
+            // Integritás védelem: Ha mosásban van, a státusz nem írható felül sima űrlapból
+            if ($currentCloth && $currentCloth['status'] === 'IN_LAUNDRY') {
+                $status = 'IN_LAUNDRY';
+            } else {
+                $postedStatus = $_POST['status'] ?? '';
+                if ($postedStatus === 'LOST' || $postedStatus === 'SCRAPPED') {
+                    $status = $postedStatus;
+                } else {
+                    $status = $isEmpReserve ? 'RESERVE' : 'ACTIVE';
+                }
+            }
+
             $db->execute("
                 UPDATE clothes SET barcode = ?, item_code = ?, name = ?, category = ?, color = ?, size = ?, employee_id = ?, location_id = ?, status = ?, notes = ?
                 WHERE id = ?
             ", [$barcode, $item_code, $name, $category, $color, $size, $emp_id, $location_id, $status, $notes, $clothId]);
-            setFlashMessage('success', "Munkaruha sikeresen módosítva: {$barcode}");
+            setFlashMessage('success', "Munkaruha adatai sikeresen módosítva: {$barcode}");
         }
         redirect('clothes.php');
     }
@@ -73,7 +94,7 @@ if ($search) {
 
 $whereClause = implode(" AND ", $where);
 $clothes = $db->fetchAll("
-    SELECT c.*, e.full_name as employee_name, e.employee_code, l.short_name as location_short
+    SELECT c.*, e.full_name as employee_name, e.employee_code, e.is_reserve as employee_is_reserve, l.short_name as location_short
     FROM clothes c
     LEFT JOIN employees e ON c.employee_id = e.id
     LEFT JOIN locations l ON c.location_id = l.id
@@ -91,7 +112,7 @@ require_once __DIR__ . '/includes/header.php';
     <div class="flex flex-wrap items-center justify-between gap-4">
       <div>
         <h2 class="text-xl font-bold text-slate-900">Munkaruhák Nyilvántartása</h2>
-        <p class="text-xs text-slate-500">Keresés, szűrés, dolgozókhoz rendelés és státuszmódosítás</p>
+        <p class="text-xs text-slate-500">Keresés, szűrés, dolgozókhoz rendelés és leltárkövetés</p>
       </div>
       <button onclick="openClothModal()" class="px-4 py-2.5 bg-brand-600 hover:bg-brand-700 text-white font-semibold text-sm rounded-xl transition-all flex items-center space-x-2 shadow-sm">
         <i data-lucide="plus" class="w-4 h-4"></i>
@@ -216,6 +237,17 @@ require_once __DIR__ . '/includes/header.php';
       <button onclick="document.getElementById('cloth-modal').classList.add('hidden')" class="text-slate-400 hover:text-slate-600"><i data-lucide="x" class="w-5 h-5"></i></button>
     </div>
 
+    <!-- Mosodai státusz zárolás figyelmeztető banner -->
+    <div id="laundry-lock-banner" class="hidden p-3.5 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-900 space-y-1">
+      <div class="font-bold flex items-center space-x-1.5">
+        <i data-lucide="clock" class="w-4 h-4 text-amber-600"></i>
+        <span>Ez a munkaruha jelenleg mosodában van!</span>
+      </div>
+      <p class="text-amber-800">
+        A státusza a logikai integritás megőrzése érdekében zárolva van. Visszavételezése a <strong>Visszavétel mosásból (MOS-BE)</strong> menüpontban történik.
+      </p>
+    </div>
+
     <form method="POST" action="clothes.php" class="space-y-3 text-sm">
       <input type="hidden" name="csrf_token" value="<?php echo getCsrfToken(); ?>">
       <input type="hidden" name="form_action" id="cloth-form-action" value="create">
@@ -273,7 +305,7 @@ require_once __DIR__ . '/includes/header.php';
           <label class="block text-xs font-bold text-slate-600 mb-1">Státusz</label>
           <select name="status" id="cloth-form-status" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl">
             <option value="ACTIVE">Aktív (Dolgozónál)</option>
-            <option value="IN_LAUNDRY">Mosásban</option>
+            <option value="IN_LAUNDRY">Mosásban (Zárolt)</option>
             <option value="RESERVE">Tartalék</option>
             <option value="LOST">Elveszett / Nincs meg</option>
             <option value="SCRAPPED">Selejt</option>
@@ -282,10 +314,12 @@ require_once __DIR__ . '/includes/header.php';
       </div>
       <div>
         <label class="block text-xs font-bold text-slate-600 mb-1">Hozzárendelt Dolgozó</label>
-        <select name="employee_id" id="cloth-form-employee" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl">
+        <select name="employee_id" id="cloth-form-employee" onchange="handleEmployeeChange()" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl">
           <option value="">-- Nincs hozzárendelve / Tartalék --</option>
           <?php foreach ($employees as $e): ?>
-            <option value="<?php echo $e['id']; ?>"><?php echo escape($e['full_name'] . ' (' . $e['employee_code'] . ')'); ?></option>
+            <option value="<?php echo $e['id']; ?>" data-is-reserve="<?php echo $e['is_reserve']; ?>">
+              <?php echo escape($e['full_name'] . ' (' . $e['employee_code'] . ')'); ?>
+            </option>
           <?php endforeach; ?>
         </select>
       </div>
@@ -312,6 +346,8 @@ function openClothModal() {
   document.getElementById('cloth-form-size').value = '';
   document.getElementById('cloth-form-item-code').value = '';
   document.getElementById('cloth-form-notes').value = '';
+  document.getElementById('laundry-lock-banner').classList.add('hidden');
+  document.getElementById('cloth-form-status').disabled = false;
   document.getElementById('cloth-modal').classList.remove('hidden');
 }
 
@@ -329,7 +365,33 @@ function editCloth(c) {
   document.getElementById('cloth-form-status').value = c.status || 'ACTIVE';
   document.getElementById('cloth-form-employee').value = c.employee_id || '';
   document.getElementById('cloth-form-notes').value = c.notes || '';
+
+  // Logikai integritási zár: Ha mosásban van, a státusz nem módosítható kézzel
+  if (c.status === 'IN_LAUNDRY') {
+    document.getElementById('laundry-lock-banner').classList.remove('hidden');
+    document.getElementById('cloth-form-status').disabled = true;
+  } else {
+    document.getElementById('laundry-lock-banner').classList.add('hidden');
+    document.getElementById('cloth-form-status').disabled = false;
+  }
+
   document.getElementById('cloth-modal').classList.remove('hidden');
+  if (window.lucide) lucide.createIcons();
+}
+
+function handleEmployeeChange() {
+  const statusSelect = document.getElementById('cloth-form-status');
+  if (statusSelect.disabled) return; // Ha mosásban van, nem módosítjuk automatikusan
+
+  const empSelect = document.getElementById('cloth-form-employee');
+  const selectedOpt = empSelect.options[empSelect.selectedIndex];
+  const isReserve = selectedOpt ? selectedOpt.getAttribute('data-is-reserve') : null;
+
+  if (!empSelect.value || isReserve == '1') {
+    statusSelect.value = 'RESERVE';
+  } else {
+    statusSelect.value = 'ACTIVE';
+  }
 }
 </script>
 

@@ -78,12 +78,20 @@ require_once __DIR__ . '/includes/header.php';
                 <td class="px-6 py-3.5 text-xs text-slate-500 font-mono"><?php echo date('Y.m.d H:i', strtotime($b['created_at'])); ?></td>
                 <td class="px-6 py-3.5 text-xs text-slate-600"><?php echo escape($b['user_name'] ?: '-'); ?></td>
                 <td class="px-6 py-3.5">
-                  <span class="px-2 py-0.5 text-xs font-semibold rounded <?php echo $b['status'] === 'COMPLETED' ? 'bg-slate-100 text-slate-700' : 'bg-brand-100 text-brand-800'; ?>">
-                    <?php echo $b['status'] === 'COMPLETED' ? 'Lezárva' : 'Folyamatban'; ?>
-                  </span>
+                  <?php if ($b['status'] === 'COMPLETED'): ?>
+                    <span class="px-2 py-0.5 text-xs font-semibold rounded bg-slate-100 text-slate-700">Lezárva</span>
+                  <?php else: ?>
+                    <span class="px-2 py-0.5 text-xs font-bold rounded bg-amber-100 text-amber-800 animate-pulse">Nyitott / Folyamatban</span>
+                  <?php endif; ?>
                 </td>
-                <td class="px-6 py-3.5 text-right">
-                  <button onclick="openDeliveryModal(<?php echo $b['id']; ?>)" class="px-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-xs font-semibold flex items-center space-x-1 ml-auto shadow-xs">
+                <td class="px-6 py-3.5 text-right flex items-center justify-end space-x-2">
+                  <?php if ($b['status'] === 'IN_PROGRESS'): ?>
+                    <a href="scanner.php" class="px-2.5 py-1.5 bg-brand-600 hover:bg-brand-700 text-white rounded-lg text-xs font-bold flex items-center space-x-1 shadow-xs">
+                      <i data-lucide="play" class="w-3.5 h-3.5"></i>
+                      <span>Folytatás</span>
+                    </a>
+                  <?php endif; ?>
+                  <button onclick="openDeliveryModal(<?php echo $b['id']; ?>)" class="px-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-xs font-semibold flex items-center space-x-1 shadow-xs">
                     <i data-lucide="file-text" class="w-3.5 h-3.5"></i>
                     <span>Átadóív / Nyomtatás</span>
                   </button>

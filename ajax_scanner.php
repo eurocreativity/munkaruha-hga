@@ -345,6 +345,38 @@ if ($action === 'scan') {
         exit();
     }
 
+    // Szigorú Logikai Állapotgép (State Machine) Ellenőrzés
+    if ($direction === 'OUT') {
+        if ($cloth['status'] === 'IN_LAUNDRY') {
+            echo json_encode([
+                'success' => false,
+                'sound' => 'warning',
+                'message' => "Ez a munkaruha ({$cloth['name']}) MÁR MOSODÁBAN VAN! Nem küldhető el újra."
+            ]);
+            exit();
+        }
+        if ($cloth['status'] === 'SCRAPPED') {
+            echo json_encode([
+                'success' => false,
+                'sound' => 'error',
+                'message' => "Ez a munkaruha ({$cloth['name']}) SELEJTEZVE VAN! Nem adható át mosodának."
+            ]);
+            exit();
+        }
+    } else {
+        // IN irány (Visszavétel)
+        if ($cloth['status'] !== 'IN_LAUNDRY') {
+            $stLabels = ['ACTIVE' => 'Aktív (Dolgozónál)', 'RESERVE' => 'Tartalék', 'LOST' => 'Elveszett', 'SCRAPPED' => 'Selejtezve'];
+            $stText = $stLabels[$cloth['status']] ?? $cloth['status'];
+            echo json_encode([
+                'success' => false,
+                'sound' => 'warning',
+                'message' => "Ez a ruha ({$cloth['name']}) NINCS MOSODÁBAN! (Jelenlegi státusza: {$stText}). Csak mosásban lévő ruha vehető vissza."
+            ]);
+            exit();
+        }
+    }
+
     if (!$batchId) {
         $batch = $db->fetchOne("
             SELECT * FROM laundry_batches 

@@ -100,7 +100,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['csv_file'])) {
                         variant = VALUES(variant),
                         logo = VALUES(logo),
                         notes = VALUES(notes),
-                        net_value = VALUES(net_value)
+                        net_value = VALUES(net_value),
+                        status = IF(status = 'IN_LAUNDRY', 'IN_LAUNDRY', VALUES(status))
                 ", [$barcode, $itemCode, $itemName, $cat, $col, $size, $empId, $locId, $status, $variant, $logo, $notes, $netVal]);
 
                 $imported++;
