@@ -1,19 +1,24 @@
 <?php
 require_once __DIR__ . '/../config.php';
 require_once __DIR__ . '/../classes/Database.php';
+require_once __DIR__ . '/../classes/Settings.php';
 
 $currentUser = getCurrentUser();
 $activeLocationId = getActiveLocationId();
 
 $db = Database::getInstance();
 $allLocations = $db->fetchAll("SELECT * FROM locations ORDER BY id ASC");
+
+$settingsObj = new Settings();
+$companyName = $settingsObj->get('company_name', 'HGA Biomed Kft.');
+$companyLogo = $settingsObj->get('company_logo', '');
 ?>
 <!DOCTYPE html>
 <html lang="hu" class="h-full bg-slate-50">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>HGA Biomed - Munkaruha és Mosodai Rendszer</title>
+  <title><?php echo escape($companyName); ?> - Munkaruha és Mosodai Rendszer</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://unpkg.com/lucide@latest"></script>
   <script src="https://unpkg.com/html5-qrcode"></script>
@@ -44,17 +49,24 @@ $allLocations = $db->fetchAll("SELECT * FROM locations ORDER BY id ASC");
     <header class="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-xs">
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div class="flex items-center justify-between h-16">
-          <a href="dashboard.php" class="flex items-center space-x-3">
-            <div class="flex items-center justify-center w-10 h-10 rounded-xl bg-brand-600 text-white shadow-md shadow-brand-600/20">
-              <i data-lucide="shirt" class="w-6 h-6"></i>
-            </div>
-            <div>
-              <div class="flex items-center space-x-2">
-                <span class="font-bold text-slate-900 text-lg leading-none">HGA Biomed</span>
-                <span class="px-2 py-0.5 text-xs font-semibold bg-brand-100 text-brand-800 rounded-full"><?php echo escape(getAppVersion()); ?></span>
+          <a href="dashboard.php" class="flex items-center space-x-3 group">
+            <?php if ($companyLogo && file_exists(__DIR__ . '/../' . strtok($companyLogo, '?'))): ?>
+              <div class="flex items-center h-10 max-w-[170px]">
+                <img src="<?php echo escape($companyLogo); ?>" alt="<?php echo escape($companyName); ?>" class="max-h-10 max-w-[170px] w-auto h-auto object-contain">
               </div>
-              <p class="text-xs text-slate-500 font-medium">Munkaruha & Mosoda Rendszer</p>
-            </div>
+              <span class="px-2 py-0.5 text-xs font-semibold bg-brand-100 text-brand-800 rounded-full"><?php echo escape(getAppVersion()); ?></span>
+            <?php else: ?>
+              <div class="flex items-center justify-center w-10 h-10 rounded-xl bg-brand-600 text-white shadow-md shadow-brand-600/20">
+                <i data-lucide="shirt" class="w-6 h-6"></i>
+              </div>
+              <div>
+                <div class="flex items-center space-x-2">
+                  <span class="font-bold text-slate-900 text-lg leading-none"><?php echo escape($companyName); ?></span>
+                  <span class="px-2 py-0.5 text-xs font-semibold bg-brand-100 text-brand-800 rounded-full"><?php echo escape(getAppVersion()); ?></span>
+                </div>
+                <p class="text-xs text-slate-500 font-medium">Munkaruha & Mosoda Rendszer</p>
+              </div>
+            <?php endif; ?>
           </a>
 
           <!-- Telephely választó -->
@@ -75,10 +87,13 @@ $allLocations = $db->fetchAll("SELECT * FROM locations ORDER BY id ASC");
           <!-- Profil & Kilépés -->
           <div class="flex items-center space-x-3">
             <?php if ($currentUser): ?>
-              <div class="text-right hidden sm:block">
-                <p class="text-sm font-bold text-slate-800 leading-tight"><?php echo escape($currentUser['full_name']); ?></p>
+              <a href="profile.php" class="text-right hidden sm:block hover:opacity-80 transition-opacity">
+                <p class="text-sm font-bold text-slate-800 leading-tight flex items-center justify-end space-x-1">
+                  <span><?php echo escape($currentUser['full_name']); ?></span>
+                  <i data-lucide="user" class="w-3.5 h-3.5 text-slate-400"></i>
+                </p>
                 <span class="text-xs font-medium text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded capitalize"><?php echo escape($currentUser['role']); ?></span>
-              </div>
+              </a>
               <a href="logout.php" title="Kijelentkezés" class="p-2 text-slate-500 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all">
                 <i data-lucide="log-out" class="w-5 h-5"></i>
               </a>
@@ -128,6 +143,8 @@ $allLocations = $db->fetchAll("SELECT * FROM locations ORDER BY id ASC");
               <i data-lucide="file-spreadsheet" class="w-4 h-4"></i>
               <span>Leltár CSV</span>
             </a>
+
+            <!-- KIZÁRÓLAG ADMIN JOGOSULTSÁGÚ MENÜPONTOK -->
             <?php if (isAdmin()): ?>
               <a href="audit.php" class="<?php echo navClass('audit.php', $currentPage); ?>">
                 <i data-lucide="clipboard-list" class="w-4 h-4"></i>
