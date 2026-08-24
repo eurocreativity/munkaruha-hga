@@ -69,15 +69,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
   <div class="w-full max-w-md bg-white/5 backdrop-blur-xl rounded-3xl shadow-2xl p-8 border border-white/10">
     <div class="text-center mb-8">
-      <?php if ($companyLogo && file_exists(__DIR__ . '/' . strtok($companyLogo, '?'))): ?>
-        <div class="flex justify-center mb-4">
-          <img src="<?php echo escape($companyLogo); ?>" alt="<?php echo escape($companyName); ?>" class="max-h-12 max-w-[220px] object-contain">
-        </div>
-      <?php else: ?>
-        <div class="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-brand-600/20 text-brand-400 border border-brand-500/30 mb-4 shadow-inner">
-          <i data-lucide="shirt" class="w-8 h-8"></i>
-        </div>
-      <?php endif; ?>
+      <div class="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-brand-600/20 text-brand-400 border border-brand-500/30 mb-4 shadow-inner">
+        <i data-lucide="shirt" class="w-8 h-8"></i>
+      </div>
       <h1 class="text-2xl font-bold text-white"><?php echo escape($companyName); ?></h1>
       <p class="text-xs text-slate-400 mt-1 font-medium">Munkaruha és Mosodai Nyilvántartó Rendszer</p>
     </div>

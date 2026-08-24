@@ -89,15 +89,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $validToken) {
   <div class="max-w-md w-full space-y-8 bg-white/5 backdrop-blur-xl p-8 rounded-3xl border border-white/10 shadow-2xl">
     <!-- Logó & Fejléc -->
     <div class="text-center space-y-3">
-      <?php if ($companyLogo && file_exists(__DIR__ . '/' . strtok($companyLogo, '?'))): ?>
-        <div class="flex justify-center mb-4">
-          <img src="<?php echo escape($companyLogo); ?>" alt="<?php echo escape($companyName); ?>" class="max-h-12 max-w-[200px] object-contain">
-        </div>
-      <?php else: ?>
-        <div class="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-brand-600/20 text-brand-400 border border-brand-500/30 mb-2">
-          <i data-lucide="user-check" class="w-8 h-8"></i>
-        </div>
-      <?php endif; ?>
+      <div class="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-brand-600/20 text-brand-400 border border-brand-500/30 mb-2 shadow-inner">
+        <i data-lucide="user-check" class="w-8 h-8"></i>
+      </div>
 
       <h1 class="text-2xl font-black text-white tracking-tight">Fiók Aktiválása</h1>
       <?php if ($user): ?>
