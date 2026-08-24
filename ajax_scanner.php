@@ -315,12 +315,26 @@ if ($action === 'remove_item_from_batch') {
     }
 }
 
-// 4. Teljes aktuális csomag visszavonása / törlése
+// 4. Teljes aktuális csomag visszavonása / törlése (Kizárólag NYITOTT csomagra!)
 if ($action === 'cancel_batch') {
     $batchId = intval($data['batch_id'] ?? 0);
 
     if (!$batchId) {
         echo json_encode(['success' => false, 'message' => 'Hiányzó csomag azonosító!']);
+        exit();
+    }
+
+    $batch = $db->fetchOne("SELECT * FROM laundry_batches WHERE id = ?", [$batchId]);
+    if (!$batch) {
+        echo json_encode(['success' => false, 'message' => 'A csomag nem található!']);
+        exit();
+    }
+
+    if ($batch['status'] === 'COMPLETED') {
+        echo json_encode([
+            'success' => false,
+            'message' => 'A már lezárt szállítólevelek hivatalos bizonylatnak minősülnek, utólag nem törölhetők a rendszerből a napló és a ruha-státuszok integritása érdekében!'
+        ]);
         exit();
     }
 

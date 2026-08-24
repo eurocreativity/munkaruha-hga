@@ -103,8 +103,8 @@ require_once __DIR__ . '/includes/header.php';
                     <span>Átadóív / Nyomtatás</span>
                   </button>
 
-                  <?php if (isAdmin()): ?>
-                    <button onclick="cancelBatch(<?php echo $b['id']; ?>, '<?php echo escape($b['batch_number']); ?>')" class="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all" title="Csomag sztornózása / törlése">
+                  <?php if (isAdmin() && $b['status'] === 'IN_PROGRESS'): ?>
+                    <button onclick="cancelBatch(<?php echo $b['id']; ?>, '<?php echo escape($b['batch_number']); ?>')" class="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all" title="Nyitott csomag visszavonása">
                       <i data-lucide="trash-2" class="w-4 h-4"></i>
                     </button>
                   <?php endif; ?>
