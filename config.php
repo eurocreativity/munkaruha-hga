@@ -45,16 +45,19 @@ ini_set('display_errors', 1);
 error_reporting(E_ALL & ~E_NOTICE & ~E_DEPRECATED & ~E_WARNING);
 
 function getAppVersion() {
+    $vNum = __DIR__ . '/version_num.txt';
+    if (file_exists($vNum)) {
+        $v = trim(file_get_contents($vNum));
+        if (!empty($v)) {
+            return (strpos($v, 'v') === 0) ? $v : 'v' . $v;
+        }
+    }
     $versionFile = __DIR__ . '/version.txt';
     if (file_exists($versionFile)) {
         $v = trim(file_get_contents($versionFile));
-        if (!empty($v)) return '1.0-' . substr($v, 0, 8);
+        if (!empty($v)) return 'v1.0';
     }
-    $vNum = __DIR__ . '/version_num.txt';
-    if (file_exists($vNum)) {
-        return trim(file_get_contents($vNum));
-    }
-    return '1.0.0';
+    return 'v1.0';
 }
 
 function generateCsrfToken() {
