@@ -162,6 +162,8 @@ $version = getAppVersion();
         <p>A <strong>„📋 Munkaruhák Kiválasztása Listából”</strong> gombra kattintva dolgozó vagy kategória szerint, pipálós listából egyszerre több ruha is hozzáadható a csomaghoz.</p>
         <p class="font-bold text-slate-900 mt-2">📄 Csomag Lezárása & Szállítólevél:</p>
         <p>A <strong>„Csomag Lezárása & Szállítólevél”</strong> gomb megnyomásával a rendszer legenerálja a hivatalos átadás-átvételi bizonylatot, amit a mosodai futárral két példányban alá kell íratni.</p>
+        <p class="font-bold text-slate-900 mt-2">🛡️ Hivatalos Bizonylatvédelem:</p>
+        <p class="text-slate-600">A lezárt szállítólevelek hivatalos audit bizonylatnak minősülnek, utólag nem törölhetők a rendszerből a ruha-státuszok és a mosási előzmények védelme érdekében. A korábbi bizonylatok bármikor visszakereshetők és újranyomtathatók.</p>
       </div>
     </div>
 
@@ -233,8 +235,8 @@ $version = getAppVersion();
           <p class="text-slate-600">Az Admin felviszi az új felhasználó email címét, és a rendszer egyedi aktiváló linket küld neki. A munkatárs a linkre kattintva maga adja meg első jelszavát.</p>
         </div>
         <div class="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-2">
-          <p class="font-bold text-slate-900">🔑 Elfelejtett Jelszó Visszaállítás:</p>
-          <p class="text-slate-600">A belépési oldalon (`login.php`) az „Elfelejtett jelszó?” gombra kattintva a felhasználó 1 óráig érvényes biztonságos linket kap a jelszó újbóli beállításához.</p>
+          <p class="font-bold text-slate-900">⚡ Valós Idejű Email Szintaktikai Ellenőrzés:</p>
+          <p class="text-slate-600">Az űrlap gépelés közben valós időben ellenőrzi az email helyességét (RFC 822 szabvány), megelőzve az elgépeléseket és megvédve a felugró ablak tartalmát az elvesztéstől.</p>
         </div>
       </div>
     </div>
@@ -243,15 +245,17 @@ $version = getAppVersion();
     <div id="section-6" class="space-y-4 pt-6 border-t border-slate-200">
       <div class="flex items-center space-x-3 pb-2 border-b border-slate-200">
         <div class="w-8 h-8 rounded-lg bg-brand-600 text-white flex items-center justify-center font-bold text-sm">6</div>
-        <h2 class="text-xl font-bold text-slate-900">Rendszerbeállítások, Céglogó és Frissítések</h2>
+        <h2 class="text-xl font-bold text-slate-900">Rendszerbeállítások, Sötét Mód, Logó és Frissítések</h2>
       </div>
       <p class="text-sm text-slate-600 leading-relaxed">
-        A <strong>Beállítások (`settings.php`)</strong> menüpontban kizárólag az Adminisztrátor végezhet arculati és kommunikációs konfigurációt:
+        A <strong>Beállítások (`settings.php`)</strong> és a fejléc felületein elérhető központi funkciók:
       </p>
-      <ul class="text-xs text-slate-700 space-y-1.5 list-disc list-inside bg-slate-50 p-4 rounded-xl border border-slate-200">
-        <li><strong>Céglogó feltöltése:</strong> PNG, JPG vagy SVG formátumú logó, mely automatikusan megjelenik a fejlécben, az emailekben és a szállítóleveleken.</li>
-        <li><strong>SMTP Levelező Szerver:</strong> Titkosított TLS/SSL kapcsolat (Host, Port, User, Jelszó) beépített Teszt Email gombbal.</li>
-        <li><strong>Automatikus GitHub Rendszerfrissítés (`update.php`):</strong> 1 kattintásos verziófrissítés a hivatalos repóból.</li>
+      <ul class="text-xs text-slate-700 space-y-2 list-disc list-inside bg-slate-50 p-4 rounded-xl border border-slate-200">
+        <li><strong>🌙 Éjszakai (Sötét) és Világos Mód:</strong> A felső fejléc Hold/Nap gombjával egy kattintással átkapcsolható a teljes képernyős szemkímélő sötét mód, melyet a böngésző automatikusan megjegyez.</li>
+        <li><strong>🖼️ Céglogó feltöltése:</strong> PNG, JPG vagy SVG formátumú logó, mely automatikusan megjelenik a belső fejlécben, az emailekben és a szállítóleveleken.</li>
+        <li><strong>📧 SMTP Levelező Szerver:</strong> Titkosított TLS/SSL kapcsolat (Host, Port, User, Jelszó) beépített Teszt Email gombbal.</li>
+        <li><strong>🏷️ Szemantikus Verziószámozás (`v1.34`):</strong> A rendszer fejlécében jól láthatóan követhető az éppen futó verziószám.</li>
+        <li><strong>🔄 Automatikus GitHub Rendszerfrissítés (`update.php`):</strong> 1 kattintásos verziófrissítés a hivatalos repóból előzetes automatikus biztonsági mentéssel.</li>
       </ul>
     </div>
 

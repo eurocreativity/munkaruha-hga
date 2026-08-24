@@ -139,8 +139,8 @@
             </h4>
             <div class="space-y-2">
               <p>Itt visszakereshető az összes korábbi mosodai kiadás és visszavételezés.</p>
-              <p><strong>🖨️ Újranyomtatás:</strong> Bármelyik korábbi szállítólevél bármikor újranyomtatható.</p>
-              <p><strong>🗑️ Sztornózás (Csak Admin):</strong> Ha egy csomagot tévesen zártak le, a Rendszergazda a piros kuka gombbal sztornózhatja, ami a ruhák eredeti státuszát azonnal helyreállítja.</p>
+              <p><strong>🖨️ Újranyomtatás:</strong> Bármelyik korábbi szállítólevél bármikor újranyomtatható a futár vagy a könyvelés számára.</p>
+              <p><strong>🛡️ Bizonylatvédelem:</strong> A már lezárt (kész) szállítólevelek hivatalos audit bizonylatnak minősülnek, utólag nem törölhetők a rendszerből a ruha-státuszok védelmében. Kizárólag a még folyamatban lévő (nyitott) csomagok vonhatók vissza.</p>
             </div>
           </div>
 
@@ -151,9 +151,9 @@
               <span>Szerepkörök & Hozzáférések</span>
             </h4>
             <div class="space-y-2">
-              <p><strong>1. Rendszergazda (Admin):</strong> Minden funkcióhoz, beállításhoz, felhasználóhoz, jelszóhoz és audit naplóhoz hozzáfér.</p>
-              <p><strong>2. Raktáros (Operátor):</strong> Napi operatív munka (olvasás, csomagküldés, új ruha/dolgozó felvétel, nyilatkozat nyomtatás).</p>
-              <p><strong>3. Megtekintő (Viewer / Vezető):</strong> Szigorúan <em>Csak Olvasási jog</em>. Megtekintheti a készleteket, mosásban lévőket és nyilatkozatokat, de nem szerkeszthet és nem küldhet csomagot.</p>
+              <p><strong>1. Rendszergazda (Admin):</strong> Teljes jogosultság (beállítások, felhasználók meghívása/kezelése, jelszavak, audit napló, rendszerfrissítés).</p>
+              <p><strong>2. Raktáros (Operátor):</strong> Napi operatív munka (vonalkód olvasás, csomagküldés, új ruha/dolgozó felvétel, átadás-átvételi nyilatkozat nyomtatás).</p>
+              <p><strong>3. Megtekintő (Viewer / Vezető):</strong> Szigorúan <em>Csak Olvasási jog</em>. Megtekintheti a készleteket, mosásban lévőket és nyilatkozatokat, de nem szerkeszthet és nem exportálhat CSV-t.</p>
             </div>
           </div>
 
@@ -161,12 +161,14 @@
           <div id="help-pane-admin" class="help-pane hidden space-y-3">
             <h4 class="font-bold text-slate-900 text-sm flex items-center space-x-2">
               <i data-lucide="sliders" class="w-4 h-4 text-slate-800"></i>
-              <span>Rendszergazdai Funkciók & Beállítások</span>
+              <span>Rendszergazdai Funkciók, Sötét Mód & Beállítások</span>
             </h4>
             <div class="space-y-2">
+              <p><strong>🌙 Sötét / Világos Mód:</strong> A fejlécben lévő Hold/Nap ikonnal azonnal átváltható a téma, amit a rendszer megjegyez.</p>
+              <p><strong>✉️ Valós idejű Email Ellenőrzés:</strong> Új felhasználó meghívásakor az űrlap gépelés közben ellenőrzi a formátumot, megelőzve az elgépeléseket.</p>
               <p><strong>🖼️ Céglogó feltöltése:</strong> A Beállításokban feltöltött PNG/SVG logó automatikusan megjelenik a fejlécben, az emailekben és a szállítóleveleken.</p>
-              <p><strong>📧 Email & SMTP Beállítások:</strong> Céges levelezőszerver konfigurálása és tesztelése elfelejtett jelszó és új munkatársi meghívók küldéséhez.</p>
-              <p><strong>🔄 Rendszerfrissítés:</strong> 1 kattintásos frissítés a legújabb funkciókra közvetlenül a GitHubról.</p>
+              <p><strong>📧 SMTP Levelező:</strong> Titkosított céges levelezőszerver konfigurálása és tesztelése jelszóvisszaállításhoz és meghívókhoz.</p>
+              <p><strong>🔄 1-Kattintásos Frissítés:</strong> Verziófrissítés közvetlenül a GitHubról az új funkciók és javítások azonnali telepítéséhez.</p>
             </div>
           </div>
 
