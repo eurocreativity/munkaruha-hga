@@ -108,7 +108,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
           </span>
           <input type="text" name="username" required autocomplete="username" autofocus
             class="w-full pl-10 pr-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent transition-all"
-            placeholder="pl. admin vagy jutai_operator">
+            placeholder="Felhasználónév">
         </div>
       </div>
 
@@ -133,11 +133,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <i data-lucide="arrow-right" class="w-4 h-4"></i>
       </button>
     </form>
-
-    <div class="mt-6 pt-6 border-t border-white/10 text-xs text-slate-400 text-center space-y-1">
-      <p>Alapértelmezett fiókok: <span class="font-mono text-slate-300 font-semibold">admin / admin123</span></p>
-      <p><span class="font-mono text-slate-300 font-semibold">jutai_operator / jutai123</span> | <span class="font-mono text-slate-300 font-semibold">nagygat_operator / nagygat123</span></p>
-    </div>
   </div>
 
   <script>
