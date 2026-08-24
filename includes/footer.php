@@ -188,6 +188,14 @@
       lucide.createIcons();
     }
 
+    function toggleDarkMode() {
+      const isDark = document.documentElement.classList.toggle('dark');
+      localStorage.setItem('theme', isDark ? 'dark' : 'light');
+      if (window.lucide) {
+        lucide.createIcons();
+      }
+    }
+
     function openInteractiveHelp(preferredTab) {
       const modal = document.getElementById('interactive-help-modal');
       if (!modal) return;
