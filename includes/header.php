@@ -48,46 +48,102 @@ $companyLogo = $settingsObj->get('company_logo', '');
       #printable-area { position: absolute; left: 0; top: 0; width: 100%; }
     }
 
-    /* Sötét mód átfogó dizájn-transzformáció */
-    .dark body { background-color: #020617 !important; color: #f8fafc !important; }
-    .dark .bg-white { background-color: #0f172a !important; }
-    .dark .bg-slate-50 { background-color: #1e293b !important; }
-    .dark .bg-slate-100 { background-color: #334155 !important; }
+    /* Sötét mód átfogó dizájn-transzformáció és tökéletes kontraszt */
+    .dark body { background-color: #0b1120 !important; color: #f8fafc !important; }
+    .dark .bg-white { background-color: #111827 !important; border-color: #1f2937 !important; }
+    .dark .bg-slate-50 { background-color: #1e293b !important; border-color: #334155 !important; }
+    .dark .bg-slate-100 { background-color: #334155 !important; border-color: #475569 !important; }
     .dark .border-slate-200, .dark .border-slate-100 { border-color: #334155 !important; }
-    .dark .text-slate-900 { color: #f8fafc !important; }
-    .dark .text-slate-800 { color: #f1f5f9 !important; }
+    
+    /* Betűszínek kiemelkedő kontraszttal */
+    .dark .text-slate-900 { color: #ffffff !important; }
+    .dark .text-slate-800 { color: #f8fafc !important; }
     .dark .text-slate-700 { color: #e2e8f0 !important; }
     .dark .text-slate-600 { color: #cbd5e1 !important; }
     .dark .text-slate-500 { color: #94a3b8 !important; }
-    .dark .text-slate-400 { color: #64748b !important; }
+    .dark .text-slate-400 { color: #94a3b8 !important; }
+    .dark .font-mono { color: #e2e8f0; }
+
+    /* Beviteli mezők, lenyílók */
     .dark input, .dark select, .dark textarea {
       background-color: #1e293b !important;
       border-color: #475569 !important;
-      color: #f8fafc !important;
+      color: #ffffff !important;
+    }
+    .dark input::placeholder, .dark textarea::placeholder {
+      color: #64748b !important;
+    }
+
+    /* Táblázatok és elválasztók */
+    .dark table thead, .dark thead th {
+      background-color: #1e293b !important;
+      color: #94a3b8 !important;
+      border-color: #334155 !important;
+    }
+    .dark table tbody, .dark table td, .dark table tr {
+      background-color: #111827 !important;
+      border-color: #1f2937 !important;
+    }
+    .dark table tbody tr:hover, .dark table tbody tr:hover td {
+      background-color: #1e293b !important;
     }
     .dark .divide-slate-100 > :not([hidden]) ~ :not([hidden]),
     .dark .divide-slate-200 > :not([hidden]) ~ :not([hidden]) {
-      border-color: #1e293b !important;
+      border-color: #1f2937 !important;
     }
-    .dark table thead {
+
+    /* Gombok és linkek táblázatokban */
+    .dark a.bg-slate-100, .dark button.bg-slate-100 {
       background-color: #1e293b !important;
-      color: #94a3b8 !important;
+      color: #e2e8f0 !important;
+      border: 1px solid #475569 !important;
     }
-    .dark table tbody tr:hover {
-      background-color: #1e293b90 !important;
+    .dark a.bg-slate-100:hover, .dark button.bg-slate-100:hover {
+      background-color: #334155 !important;
+      color: #ffffff !important;
     }
-    .dark .bg-amber-50 { background-color: #451a0360 !important; }
-    .dark .border-amber-200 { border-color: #78350f !important; }
-    .dark .text-amber-900, .dark .text-amber-800 { color: #fef3c7 !important; }
-    .dark .bg-emerald-50 { background-color: #064e3b60 !important; }
-    .dark .border-emerald-200 { border-color: #065f46 !important; }
-    .dark .text-emerald-900, .dark .text-emerald-800 { color: #d1fae5 !important; }
-    .dark .bg-blue-50 { background-color: #1e3a8a60 !important; }
-    .dark .border-blue-200 { border-color: #1e40af !important; }
-    .dark .text-blue-900, .dark .text-blue-800 { color: #dbeafe !important; }
-    .dark .bg-red-50 { background-color: #7f1d1d60 !important; }
-    .dark .border-red-200 { border-color: #991b1b !important; }
-    .dark .text-red-900, .dark .text-red-800 { color: #fee2e2 !important; }
+
+    /* Színes jelvények és alert dobozok */
+    .dark .bg-emerald-50, .dark .bg-emerald-100 {
+      background-color: #064e3b70 !important;
+      color: #6ee7b7 !important;
+      border-color: #059669 !important;
+    }
+    .dark .text-emerald-800, .dark .text-emerald-900, .dark .text-emerald-700 {
+      color: #6ee7b7 !important;
+    }
+    .dark .bg-amber-50, .dark .bg-amber-100 {
+      background-color: #78350f50 !important;
+      color: #fde68a !important;
+      border-color: #b45309 !important;
+    }
+    .dark .text-amber-800, .dark .text-amber-900, .dark .text-amber-700 {
+      color: #fde68a !important;
+    }
+    .dark .bg-blue-50, .dark .bg-blue-100 {
+      background-color: #1e3a8a60 !important;
+      color: #93c5fd !important;
+      border-color: #2563eb !important;
+    }
+    .dark .text-blue-800, .dark .text-blue-900, .dark .text-blue-700 {
+      color: #93c5fd !important;
+    }
+    .dark .bg-purple-50, .dark .bg-purple-100 {
+      background-color: #581c8760 !important;
+      color: #d8b4fe !important;
+      border-color: #9333ea !important;
+    }
+    .dark .text-purple-700, .dark .text-purple-800 {
+      color: #d8b4fe !important;
+    }
+    .dark .bg-red-50, .dark .bg-red-100 {
+      background-color: #7f1d1d60 !important;
+      color: #fca5a5 !important;
+      border-color: #dc2626 !important;
+    }
+    .dark .text-red-700, .dark .text-red-800, .dark .text-red-900 {
+      color: #fca5a5 !important;
+    }
   </style>
 </head>
 <body class="h-full font-sans text-slate-800 dark:text-slate-100 bg-slate-50 dark:bg-slate-950 antialiased flex flex-col transition-colors duration-200">
