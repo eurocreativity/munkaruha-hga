@@ -69,8 +69,8 @@ $companyLogo = $settingsObj->get('company_logo', '');
             <?php endif; ?>
           </a>
 
-          <!-- Telephely választó -->
-          <div class="hidden md:flex items-center bg-slate-100 p-1 rounded-xl border border-slate-200">
+          <!-- Telephely választó (Desktop és Tablet) -->
+          <div class="hidden sm:flex items-center bg-slate-100 p-1 rounded-xl border border-slate-200">
             <span class="text-xs font-semibold text-slate-500 px-2 flex items-center">
               <i data-lucide="map-pin" class="w-3.5 h-3.5 mr-1 text-slate-400"></i> Telephely:
             </span>
@@ -85,8 +85,8 @@ $companyLogo = $settingsObj->get('company_logo', '');
           </div>
 
           <!-- Súgó & Profil & Kilépés -->
-          <div class="flex items-center space-x-3">
-            <button onclick="openInteractiveHelp()" title="Interaktív Rendszer Súgó" class="px-3 py-1.5 bg-slate-100 hover:bg-brand-50 hover:text-brand-700 text-slate-700 rounded-xl text-xs font-bold transition-all flex items-center space-x-1.5 border border-slate-200 shadow-2xs">
+          <div class="flex items-center space-x-2 sm:space-x-3">
+            <button onclick="openInteractiveHelp()" title="Interaktív Rendszer Súgó" class="px-2.5 sm:px-3 py-1.5 bg-slate-100 hover:bg-brand-50 hover:text-brand-700 text-slate-700 rounded-xl text-xs font-bold transition-all flex items-center space-x-1 sm:space-x-1.5 border border-slate-200 shadow-2xs">
               <i data-lucide="help-circle" class="w-4 h-4 text-brand-600"></i>
               <span>Súgó</span>
             </button>
@@ -105,6 +105,21 @@ $companyLogo = $settingsObj->get('company_logo', '');
             <?php endif; ?>
           </div>
         </div>
+      </div>
+
+      <!-- MOBIL TELEPHELY VÁLASZTÓ (Telefonon megjelenő kompakt sáv) -->
+      <div class="sm:hidden bg-slate-100 border-t border-slate-200 px-4 py-2 flex items-center justify-between">
+        <span class="text-xs font-bold text-slate-600 flex items-center">
+          <i data-lucide="map-pin" class="w-3.5 h-3.5 mr-1 text-brand-600"></i> Telephely:
+        </span>
+        <select onchange="window.location.href='?location_id=' + this.value" class="text-xs font-bold text-slate-800 bg-white px-2.5 py-1 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-brand-500">
+          <option value="" <?php echo $activeLocationId === '' ? 'selected' : ''; ?>>Mindkét telephely (Összes)</option>
+          <?php foreach ($allLocations as $loc): ?>
+            <option value="<?php echo $loc['id']; ?>" <?php echo $activeLocationId == $loc['id'] ? 'selected' : ''; ?>>
+              <?php echo escape($loc['code'] . ' - ' . ($loc['short_name'] ?: $loc['name'])); ?>
+            </option>
+          <?php endforeach; ?>
+        </select>
       </div>
 
       <!-- FŐ MENÜSÁV -->
