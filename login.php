@@ -27,6 +27,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $user = $db->fetchOne("SELECT * FROM users WHERE username = ? AND active = 1", [$username]);
 
         if ($user && password_verify($password, $user['password_hash'])) {
+            session_regenerate_id(true);
             $_SESSION['user_id'] = $user['id'];
             $_SESSION['username'] = $user['username'];
             $_SESSION['full_name'] = $user['full_name'];

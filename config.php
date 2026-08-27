@@ -38,10 +38,12 @@ if (!headers_sent()) {
     header("X-Frame-Options: SAMEORIGIN");
     header("X-Content-Type-Options: nosniff");
     header("X-XSS-Protection: 1; mode=block");
+    header("Referrer-Policy: strict-origin-when-cross-origin");
 }
 
-// Hibakezelés (biztonságos hibamegjelenítés teszteléskor)
-ini_set('display_errors', 1);
+// Biztonságos szerveroldali hibakezelés éles környezetben (naplózás bekapcsolva, kimenet elrejtve)
+ini_set('display_errors', 0);
+ini_set('log_errors', 1);
 error_reporting(E_ALL & ~E_NOTICE & ~E_DEPRECATED & ~E_WARNING);
 
 function getAppVersion() {
