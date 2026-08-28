@@ -786,6 +786,66 @@ function showDeliveryNote(batch, items) {
 document.getElementById('close-print-modal-btn').addEventListener('click', () => {
   document.getElementById('batch-modal').classList.add('hidden');
 });
+
+// KAMERÁS VONALKÓD OLVASÓ (Html5Qrcode)
+let html5QrCodeScanner = null;
+let isCamActive = false;
+
+const cameraBtn = document.getElementById('camera-scan-btn');
+const cameraContainer = document.getElementById('camera-container');
+const closeCamBtn = document.getElementById('close-camera-btn');
+
+if (cameraBtn) {
+  cameraBtn.addEventListener('click', async () => {
+    if (isCamActive) {
+      await stopCamera();
+      return;
+    }
+
+    cameraContainer.classList.remove('hidden');
+    cameraBtn.classList.add('bg-brand-600', 'text-white');
+    cameraBtn.classList.remove('bg-slate-100', 'text-slate-600');
+
+    html5QrCodeScanner = new Html5Qrcode("qr-reader");
+    const config = { fps: 15, qrbox: { width: 280, height: 180 }, aspectRatio: 1.777778 };
+
+    try {
+      await html5QrCodeScanner.start(
+        { facingMode: "environment" },
+        config,
+        async (decodedText) => {
+          if (decodedText) {
+            await processScan(decodedText.trim());
+          }
+        },
+        (err) => {}
+      );
+      isCamActive = true;
+    } catch (e) {
+      alert('Nem sikerült elindítani a kamerát: ' + e);
+      stopCamera();
+    }
+  });
+}
+
+if (closeCamBtn) {
+  closeCamBtn.addEventListener('click', stopCamera);
+}
+
+async function stopCamera() {
+  if (html5QrCodeScanner && isCamActive) {
+    try {
+      await html5QrCodeScanner.stop();
+      html5QrCodeScanner.clear();
+    } catch(e){}
+    isCamActive = false;
+  }
+  if (cameraContainer) cameraContainer.classList.add('hidden');
+  if (cameraBtn) {
+    cameraBtn.classList.remove('bg-brand-600', 'text-white');
+    cameraBtn.classList.add('bg-slate-100', 'text-slate-600');
+  }
+}
 </script>
 
 <?php require_once __DIR__ . '/includes/footer.php'; ?>

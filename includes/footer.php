@@ -119,6 +119,8 @@
                   <p class="font-bold text-emerald-900 dark:text-emerald-300">2. VISSZAVÉTEL MOSÁSBÓL (Beolvasás - MOS-BE):</p>
                   <p class="text-emerald-800 dark:text-emerald-200">Tiszta ruhák visszavételezése. A ruha automatikusan visszakerül a dolgozóhoz (vagy tartalékba), és a rendszer növeli a <strong>mosási számlálóját (+1)</strong>.</p>
                 </div>
+                <p><strong>📱 Telefonos & Kamerás Beolvasás:</strong> A beviteli mező melletti kamera ikonra kattintva mobiltelefon kamerájával vagy webkamerával is azonnal leolvashatók a vonalkódok.</p>
+                <p><strong>🎯 Vonalkód Tesztelő (Sandbox):</strong> A menüsorban elérhető Tesztelőben biztonságosan, a ruha státuszának megváltoztatása nélkül ellenőrizheti az új vonalkód olvasókat, a telefonos kamerát és a képernyős mintákat.</p>
                 <p><strong>📋 Kézi rögzítés:</strong> Ha a vonalkód nem olvasható, a „Munkaruhák Kiválasztása Listából” gombbal név és kategória szerint választhatók ki a ruhák.</p>
                 <p><strong>📄 Csomag lezárása:</strong> A művelet végén a „Csomag Lezárása & Szállítólevél” gombra kattintva azonnal kinyomtatható a futár által aláírandó átadóív.</p>
               </div>

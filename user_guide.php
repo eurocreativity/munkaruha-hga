@@ -158,7 +158,9 @@ $version = getAppVersion();
       </div>
 
       <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 text-xs text-slate-700 space-y-2">
-        <p class="font-bold text-slate-900">💡 Kézi Rögzítés (Ha még nincs vonalkód vagy sérült a címke):</p>
+        <p class="font-bold text-slate-900">📱 Telefonos & Kamerás Beolvasás:</p>
+        <p>A beviteli mező mellett található <strong>kamera gombbal</strong> bekapcsolható a telefon hátlapi kamerája (vagy a laptop webkamerája), mellyel az olvasó pisztolyhoz hasonlóan azonnal beolvashatók a vonalkódok.</p>
+        <p class="font-bold text-slate-900 mt-2">💡 Kézi Rögzítés (Ha még nincs vonalkód vagy sérült a címke):</p>
         <p>A <strong>„📋 Munkaruhák Kiválasztása Listából”</strong> gombra kattintva dolgozó vagy kategória szerint, pipálós listából egyszerre több ruha is hozzáadható a csomaghoz.</p>
         <p class="font-bold text-slate-900 mt-2">📄 Csomag Lezárása & Szállítólevél:</p>
         <p>A <strong>„Csomag Lezárása & Szállítólevél”</strong> gomb megnyomásával a rendszer legenerálja a hivatalos átadás-átvételi bizonylatot, amit a mosodai futárral két példányban alá kell íratni.</p>
