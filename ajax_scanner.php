@@ -23,6 +23,51 @@ $db = Database::getInstance();
 $currentUser = getCurrentUser();
 
 // 0. Nyitott (folyamatban lévő) csomag lekérése oldalbetöltéskor
+if ($action === 'test_scan') {
+    $barcode = trim($data['barcode'] ?? '');
+    if (empty($barcode)) {
+        echo json_encode(['success' => false, 'message' => 'Üres vonalkód!']);
+        exit();
+    }
+
+    $cloth = $db->fetchOne("
+        SELECT c.*, 
+               e.full_name as employee_name, e.employee_code, e.locker_number, e.is_reserve as employee_is_reserve,
+               l.name as location_name, l.short_name as location_short
+        FROM clothes c
+        LEFT JOIN employees e ON c.employee_id = e.id
+        LEFT JOIN locations l ON c.location_id = l.id
+        WHERE c.barcode = ?
+    ", [$barcode]);
+
+    if ($cloth) {
+        $washCount = intval($cloth['wash_count'] ?? 0);
+        $maxWash = max(1, intval($cloth['max_wash_count'] ?? 50));
+        $washPercent = round(($washCount / $maxWash) * 100);
+        $isOverlimit = ($washCount >= $maxWash);
+
+        echo json_encode([
+            'success' => true,
+            'found' => true,
+            'barcode' => $barcode,
+            'cloth' => $cloth,
+            'wash_count' => $washCount,
+            'max_wash_count' => $maxWash,
+            'wash_percent' => $washPercent,
+            'is_overlimit' => $isOverlimit,
+            'message' => "Sikeres beolvasás! Ruha azonosítva: {$cloth['name']}"
+        ]);
+    } else {
+        echo json_encode([
+            'success' => true,
+            'found' => false,
+            'barcode' => $barcode,
+            'message' => "A vonalkód ({$barcode}) még nem szerepel az adatbázisban!"
+        ]);
+    }
+    exit();
+}
+
 if ($action === 'get_employee_receipt') {
     $empId = intval($data['employee_id'] ?? 0);
     $emp = $db->fetchOne("

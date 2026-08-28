@@ -211,6 +211,7 @@
                 <span>Rendszergazdai Funkciók & Karbantartás</span>
               </h4>
               <div class="space-y-2">
+                <p><strong>🎯 Vonalkód Tesztelő & Hardver Diagnosztika:</strong> Kockázatmentes sandbox felület az USB/Bluetooth vonalkód olvasók tesztelésére, karakterhossz- és Enter-végjel vizsgálatára, valamint képernyőről leolvasható mintákkal az éles adatbázis megváltoztatása nélkül.</p>
                 <p><strong>✉️ Valós idejű Email Ellenőrzés:</strong> Új felhasználó meghívásakor az űrlap gépelés közben ellenőrzi a szintaxist, megelőzve az elgépeléseket.</p>
                 <p><strong>🖼️ Céglogó feltöltése:</strong> A Beállításokban feltöltött PNG/SVG logó automatikusan megjelenik a fejlécben, az emailekben és a szállítóleveleken.</p>
                 <p><strong>📧 SMTP Levelező:</strong> Titkosított céges levelezőszerver konfigurálása és tesztelése jelszóvisszaállításhoz és meghívókhoz.</p>

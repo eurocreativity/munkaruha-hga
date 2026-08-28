@@ -279,6 +279,10 @@ $companyLogo = $settingsObj->get('company_logo', '');
 
             <!-- KIZÁRÓLAG ADMIN JOGOSULTSÁGÚ MENÜPONTOK -->
             <?php if (isAdmin()): ?>
+              <a href="scanner_test.php" class="<?php echo navClass('scanner_test.php', $currentPage); ?>" title="Vonalkód Olvasó & Hardver Diagnosztika">
+                <i data-lucide="scan-line" class="w-4 h-4 text-indigo-400"></i>
+                <span>Vonalkód Tesztelő</span>
+              </a>
               <a href="audit.php" class="<?php echo navClass('audit.php', $currentPage); ?>">
                 <i data-lucide="clipboard-list" class="w-4 h-4"></i>
                 <span>Napló</span>

@@ -510,6 +510,21 @@ function handleEmployeeChange() {
     statusSelect.value = 'ACTIVE';
   }
 }
+
+// Ha a Vonalkód Tesztelőből érkezett új vonalkóddal, automatikusan nyissuk meg a modált
+document.addEventListener('DOMContentLoaded', () => {
+  const urlParams = new URLSearchParams(window.location.search);
+  const newBarcode = urlParams.get('new_barcode');
+  if (newBarcode) {
+    openClothModal();
+    const barcodeInput = document.getElementById('cloth-form-barcode');
+    if (barcodeInput) {
+      barcodeInput.value = newBarcode;
+      const nameInput = document.getElementById('cloth-form-name');
+      if (nameInput) nameInput.focus();
+    }
+  }
+});
 </script>
 
 <?php require_once __DIR__ . '/includes/footer.php'; ?>

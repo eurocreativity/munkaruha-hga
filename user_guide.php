@@ -262,10 +262,11 @@ $version = getAppVersion();
           A <strong>Beállítások (`settings.php`)</strong> és a fejléc felületein elérhető központi funkciók:
         </p>
         <ul class="text-xs text-slate-700 space-y-2 list-disc list-inside bg-slate-50 p-4 rounded-xl border border-slate-200">
+          <li><strong>🎯 Vonalkód Tesztelő & Hardver Diagnosztika (`scanner_test.php`):</strong> Kockázatmentes sandbox tesztfelület új vonalkód olvasók beüzemeléséhez, karakterhossz- és Enter-végjel vizsgálathoz, valamint monitorról leolvasható interaktív mintákkal a leltár módosítása nélkül.</li>
           <li><strong>🌙 Éjszakai (Sötét) és Világos Mód:</strong> A felső fejléc Hold/Nap gombjával egy kattintással átkapcsolható a teljes képernyős szemkímélő sötét mód, melyet a böngésző automatikusan megjegyez.</li>
           <li><strong>🖼️ Céglogó feltöltése:</strong> PNG, JPG vagy SVG formátumú logó, mely automatikusan megjelenik a belső fejlécben, az emailekben és a szállítóleveleken.</li>
           <li><strong>📧 SMTP Levelező Szerver:</strong> Titkosított TLS/SSL kapcsolat (Host, Port, User, Jelszó) beépített Teszt Email gombbal.</li>
-          <li><strong>🏷️ Szemantikus Verziószámozás (`v1.34`):</strong> A rendszer fejlécében jól láthatóan követhető az éppen futó verziószám.</li>
+          <li><strong>🏷️ Szemantikus Verziószámozás (`v1.36`):</strong> A rendszer fejlécében jól láthatóan követhető az éppen futó verziószám.</li>
           <li><strong>🔄 Automatikus GitHub Rendszerfrissítés (`update.php`):</strong> 1 kattintásos verziófrissítés a hivatalos repóból előzetes automatikus biztonsági mentéssel.</li>
           <li><strong>💾 Biztonsági Mentések:</strong> Teljes adatbázis (SQL) és fájlrendszer mentések létrehozása és letöltése.</li>
         </ul>
