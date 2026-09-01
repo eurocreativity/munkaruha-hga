@@ -14,12 +14,12 @@ $settingsObj = new Settings();
 $companyName = $settingsObj->get('company_name', 'HGA Biomed Kft.');
 
 // Telephelyek
-$locations = $db->fetchAll("SELECT * FROM locations WHERE active = 1 ORDER BY code ASC");
+$locations = $db->fetchAll("SELECT * FROM locations ORDER BY id ASC");
 $activeLocId = getActiveLocationId();
 
 // Ha telephely váltás történt
-if (isset($_GET['set_location'])) {
-    $_SESSION['active_location_id'] = $_GET['set_location'];
+if (isset($_GET['location_id'])) {
+    $_SESSION['active_location_id'] = $_GET['location_id'];
     redirect('mobile.php');
 }
 ?>
@@ -102,7 +102,8 @@ if (isset($_GET['set_location'])) {
     <!-- Gyors Vezérlők -->
     <div class="flex items-center space-x-1.5">
       <!-- Telephely választó -->
-      <select onchange="location.href='mobile.php?set_location=' + this.value" class="bg-slate-800 text-slate-200 text-xs font-bold py-1.5 px-2 rounded-xl border border-slate-700 focus:outline-none focus:ring-1 focus:ring-brand-500 max-w-[120px] truncate">
+      <select onchange="window.location.href='mobile.php?location_id=' + this.value" class="bg-slate-800 text-slate-200 text-xs font-bold py-1.5 px-2 rounded-xl border border-slate-700 focus:outline-none focus:ring-1 focus:ring-brand-500 max-w-[130px] truncate">
+        <option value="" <?php echo $activeLocId === '' ? 'selected' : ''; ?>>Összes telephely</option>
         <?php foreach ($locations as $loc): ?>
           <option value="<?php echo $loc['id']; ?>" <?php echo ($activeLocId == $loc['id']) ? 'selected' : ''; ?>>
             <?php echo escape($loc['short_name'] ?: $loc['name']); ?>
