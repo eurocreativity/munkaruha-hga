@@ -250,6 +250,12 @@ $companyLogo = $settingsObj->get('company_logo', '');
               <i data-lucide="scan-barcode" class="w-4 h-4 text-brand-200"></i>
               <span>Gyors Vonalkód Olvasó</span>
             </a>
+            <?php if (canEdit()): ?>
+              <a href="mobile.php" class="<?php echo navClass('mobile.php', $currentPage); ?>" title="Mobil Vonalkód Terminál (Kamerás Olvasó)">
+                <i data-lucide="smartphone" class="w-4 h-4 text-emerald-400"></i>
+                <span class="text-emerald-300 font-bold">📱 Mobil Olvasó</span>
+              </a>
+            <?php endif; ?>
             <a href="dashboard.php" class="<?php echo navClass('dashboard.php', $currentPage); ?>">
               <i data-lucide="layout-dashboard" class="w-4 h-4"></i>
               <span>Vezérlőpult</span>

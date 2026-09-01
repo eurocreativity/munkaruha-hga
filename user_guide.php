@@ -158,8 +158,8 @@ $version = getAppVersion();
       </div>
 
       <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 text-xs text-slate-700 space-y-2">
-        <p class="font-bold text-slate-900">📱 Telefonos & Kamerás Beolvasás:</p>
-        <p>A beviteli mező mellett található <strong>kamera gombbal</strong> bekapcsolható a telefon hátlapi kamerája (vagy a laptop webkamerája), mellyel az olvasó pisztolyhoz hasonlóan azonnal beolvashatók a vonalkódok.</p>
+        <p class="font-bold text-slate-900">📱 Dedikált Mobil Vonalkód Terminál (`mobile.php`):</p>
+        <p>A menüsorban és a főoldalon elérhető mobil felület kifejezetten okostelefonos használatra lett optimalizálva: teljes képernyős élő kamerás leolvasás lézer-animációval, vaku (zseblámpa) támogatás, rezgő és hangos visszajelzés, érintéses módválasztó (MOS-KI, MOS-BE, TESZT) és közvetlen csomaglezárás anélkül, hogy PC-re lenne szükség a raktárban!</p>
         <p class="font-bold text-slate-900 mt-2">💡 Kézi Rögzítés (Ha még nincs vonalkód vagy sérült a címke):</p>
         <p>A <strong>„📋 Munkaruhák Kiválasztása Listából”</strong> gombra kattintva dolgozó vagy kategória szerint, pipálós listából egyszerre több ruha is hozzáadható a csomaghoz.</p>
         <p class="font-bold text-slate-900 mt-2">📄 Csomag Lezárása & Szállítólevél:</p>

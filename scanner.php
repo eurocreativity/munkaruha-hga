@@ -86,11 +86,15 @@ require_once __DIR__ . '/includes/header.php';
         <button id="close-camera-btn" class="w-full py-2 bg-slate-800 text-white text-xs font-bold">Kamera bezárása</button>
       </div>
 
-      <!-- Kézi Kiválasztás Gomb -->
+      <!-- Kézi Kiválasztás & Mobil Gombok -->
       <div class="pt-2 flex flex-wrap items-center justify-center gap-3">
+        <a href="mobile.php" class="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-xs transition-all flex items-center space-x-2">
+          <i data-lucide="smartphone" class="w-4 h-4"></i>
+          <span>📱 Mobil Vonalkód Terminál</span>
+        </a>
         <button type="button" id="btnOpenManualSelectModal" class="px-5 py-2.5 bg-slate-900 hover:bg-slate-800 text-white font-semibold text-xs rounded-xl shadow-xs transition-all flex items-center space-x-2">
           <i data-lucide="list-plus" class="w-4 h-4 text-brand-400"></i>
-          <span>📋 Munkaruhák Kiválasztása Listából (Kézi rögzítés)</span>
+          <span>📋 Munkaruhák Kiválasztása Listából</span>
         </button>
       </div>
 
