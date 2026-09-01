@@ -179,9 +179,9 @@ $companyLogo = $settingsObj->get('company_logo', '');
               <i data-lucide="map-pin" class="w-3.5 h-3.5 mr-1 text-slate-400"></i> Telephely:
             </span>
             <select id="global-location-select" onchange="window.location.href='?location_id=' + this.value" class="text-sm font-semibold text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-900 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-brand-500 shadow-xs">
-              <option value="" <?php echo $activeLocationId === '' ? 'selected' : ''; ?>>Mindkét telephely (Összes)</option>
+              <option value="" <?php echo ($activeLocationId === '' || $activeLocationId === null) ? 'selected' : ''; ?>>Mindkét telephely (Összes)</option>
               <?php foreach ($allLocations as $loc): ?>
-                <option value="<?php echo $loc['id']; ?>" <?php echo $activeLocationId == $loc['id'] ? 'selected' : ''; ?>>
+                <option value="<?php echo $loc['id']; ?>" <?php echo ($activeLocationId !== '' && $activeLocationId !== null && (string)$activeLocationId === (string)$loc['id']) ? 'selected' : ''; ?>>
                   <?php echo escape($loc['code'] . ' - ' . ($loc['short_name'] ?: $loc['name'])); ?>
                 </option>
               <?php endforeach; ?>
@@ -224,9 +224,9 @@ $companyLogo = $settingsObj->get('company_logo', '');
           <i data-lucide="map-pin" class="w-3.5 h-3.5 mr-1 text-brand-600"></i> Telephely:
         </span>
         <select onchange="window.location.href='?location_id=' + this.value" class="text-xs font-bold text-slate-800 dark:text-slate-200 bg-white dark:bg-slate-900 px-2.5 py-1 rounded-lg border border-slate-300 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-brand-500">
-          <option value="" <?php echo $activeLocationId === '' ? 'selected' : ''; ?>>Mindkét telephely (Összes)</option>
+          <option value="" <?php echo ($activeLocationId === '' || $activeLocationId === null) ? 'selected' : ''; ?>>Mindkét telephely (Összes)</option>
           <?php foreach ($allLocations as $loc): ?>
-            <option value="<?php echo $loc['id']; ?>" <?php echo $activeLocationId == $loc['id'] ? 'selected' : ''; ?>>
+            <option value="<?php echo $loc['id']; ?>" <?php echo ($activeLocationId !== '' && $activeLocationId !== null && (string)$activeLocationId === (string)$loc['id']) ? 'selected' : ''; ?>>
               <?php echo escape($loc['code'] . ' - ' . ($loc['short_name'] ?: $loc['name'])); ?>
             </option>
           <?php endforeach; ?>

@@ -144,7 +144,7 @@ function isViewer() {
 }
 
 function getActiveLocationId() {
-    if (isset($_GET['location_id']) && $_GET['location_id'] !== '') {
+    if (isset($_GET['location_id'])) {
         $_SESSION['active_location_id'] = $_GET['location_id'];
         return $_GET['location_id'];
     }
