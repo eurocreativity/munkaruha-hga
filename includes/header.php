@@ -219,11 +219,11 @@ $companyLogo = $settingsObj->get('company_logo', '');
       </div>
 
       <!-- MOBIL TELEPHELY VÁLASZTÓ (Telefonon megjelenő kompakt sáv) -->
-      <div class="sm:hidden bg-slate-100 border-t border-slate-200 px-4 py-2 flex items-center justify-between">
-        <span class="text-xs font-bold text-slate-600 flex items-center">
+      <div class="sm:hidden bg-slate-100 dark:bg-slate-800/80 border-t border-slate-200 dark:border-slate-700 px-4 py-2 flex items-center justify-between">
+        <span class="text-xs font-bold text-slate-600 dark:text-slate-300 flex items-center">
           <i data-lucide="map-pin" class="w-3.5 h-3.5 mr-1 text-brand-600"></i> Telephely:
         </span>
-        <select onchange="window.location.href='?location_id=' + this.value" class="text-xs font-bold text-slate-800 bg-white px-2.5 py-1 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-brand-500">
+        <select onchange="window.location.href='?location_id=' + this.value" class="text-xs font-bold text-slate-800 dark:text-slate-200 bg-white dark:bg-slate-900 px-2.5 py-1 rounded-lg border border-slate-300 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-brand-500">
           <option value="" <?php echo $activeLocationId === '' ? 'selected' : ''; ?>>Mindkét telephely (Összes)</option>
           <?php foreach ($allLocations as $loc): ?>
             <option value="<?php echo $loc['id']; ?>" <?php echo $activeLocationId == $loc['id'] ? 'selected' : ''; ?>>
@@ -233,82 +233,251 @@ $companyLogo = $settingsObj->get('company_logo', '');
         </select>
       </div>
 
-      <!-- FŐ MENÜSÁV -->
-      <nav class="bg-slate-900 text-slate-300">
+      <!-- FŐ MENÜSÁV (RESPONSIVE & ERGONOMIC GROUPED NAVIGATION) -->
+      <nav class="bg-slate-900 text-slate-300 border-t border-slate-800">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div class="flex space-x-1 overflow-x-auto py-1.5 scrollbar-none text-sm font-medium">
-            <?php 
-              $currentPage = basename($_SERVER['PHP_SELF']); 
-              function navClass($page, $currentPage) {
-                if ($page === $currentPage) {
-                  return 'flex items-center space-x-2 px-3.5 py-2 rounded-lg text-white bg-brand-600 shadow-sm transition-all whitespace-nowrap font-bold';
-                }
-                return 'flex items-center space-x-2 px-3.5 py-2 rounded-lg hover:text-white hover:bg-slate-800 transition-all whitespace-nowrap text-slate-300';
+          
+          <?php 
+            $currentPage = basename($_SERVER['PHP_SELF']); 
+            function isPageInGroup($pages, $currentPage) {
+              return in_array($currentPage, (array)$pages);
+            }
+            function groupBtnClass($pages, $currentPage) {
+              if (isPageInGroup($pages, $currentPage)) {
+                return 'flex items-center space-x-1.5 px-3 py-2 rounded-xl text-white bg-brand-600 font-bold text-xs shadow-xs transition-all';
               }
-            ?>
-            <a href="scanner.php" class="<?php echo navClass('scanner.php', $currentPage); ?>">
-              <i data-lucide="scan-barcode" class="w-4 h-4 text-brand-200"></i>
-              <span>Gyors Vonalkód Olvasó</span>
-            </a>
-            <?php if (canEdit()): ?>
-              <a href="mobile.php" class="<?php echo navClass('mobile.php', $currentPage); ?>" title="Mobil Vonalkód Terminál (Kamerás Olvasó)">
-                <i data-lucide="smartphone" class="w-4 h-4 text-emerald-400"></i>
-                <span class="text-emerald-300 font-bold">📱 Mobil Olvasó</span>
+              return 'flex items-center space-x-1.5 px-3 py-2 rounded-xl text-slate-300 hover:text-white hover:bg-slate-800 font-medium text-xs transition-all';
+            }
+            function directLinkClass($page, $currentPage) {
+              if ($page === $currentPage) {
+                return 'flex items-center space-x-1.5 px-3 py-2 rounded-xl text-white bg-brand-600 font-bold text-xs shadow-xs transition-all';
+              }
+              return 'flex items-center space-x-1.5 px-3 py-2 rounded-xl text-slate-300 hover:text-white hover:bg-slate-800 font-medium text-xs transition-all';
+            }
+            function dropdownItemClass($page, $currentPage) {
+              if ($page === $currentPage) {
+                return 'flex items-center space-x-2.5 px-3 py-2 rounded-lg text-white bg-brand-600 font-bold text-xs transition-all';
+              }
+              return 'flex items-center space-x-2.5 px-3 py-2 rounded-lg text-slate-300 hover:text-white hover:bg-slate-700/70 font-medium text-xs transition-all';
+            }
+          ?>
+
+          <!-- ASZTALI & LAPTOP MENÜSÁV (LG+) - NULLA VÍZSZINTES GÖRGETÉS -->
+          <div class="hidden lg:flex items-center justify-between py-1.5">
+            <div class="flex items-center space-x-1.5">
+              
+              <!-- 1. VEZÉRLŐPULT -->
+              <a href="dashboard.php" class="<?php echo directLinkClass('dashboard.php', $currentPage); ?>">
+                <i data-lucide="layout-dashboard" class="w-4 h-4"></i>
+                <span>Vezérlőpult</span>
               </a>
-            <?php endif; ?>
-            <a href="dashboard.php" class="<?php echo navClass('dashboard.php', $currentPage); ?>">
-              <i data-lucide="layout-dashboard" class="w-4 h-4"></i>
-              <span>Vezérlőpult</span>
-            </a>
-            <a href="clothes.php" class="<?php echo navClass('clothes.php', $currentPage); ?>">
-              <i data-lucide="tags" class="w-4 h-4"></i>
-              <span>Munkaruhák</span>
-            </a>
-            <a href="employees.php" class="<?php echo navClass('employees.php', $currentPage); ?>">
-              <i data-lucide="users" class="w-4 h-4"></i>
-              <span>Dolgozók</span>
-            </a>
-            <a href="batches.php" class="<?php echo navClass('batches.php', $currentPage); ?>">
-              <i data-lucide="truck" class="w-4 h-4"></i>
-              <span>Mosodai Csomagok & Szállítólevelek</span>
-            </a>
-            <a href="in_laundry.php" class="<?php echo navClass('in_laundry.php', $currentPage); ?>">
-              <i data-lucide="clock" class="w-4 h-4"></i>
-              <span>Mosásban lévők</span>
-            </a>
-            <?php if (canEdit()): ?>
-              <a href="scanner_test.php" class="<?php echo navClass('scanner_test.php', $currentPage); ?>" title="Vonalkód Olvasó & Hardver Diagnosztika">
-                <i data-lucide="scan-line" class="w-4 h-4 text-indigo-400"></i>
-                <span>Vonalkód Tesztelő</span>
+
+              <!-- 2. VONALKÓD & OLVASÁS DROPDOWN -->
+              <div class="relative group">
+                <button type="button" class="<?php echo groupBtnClass(['scanner.php', 'mobile.php', 'scanner_test.php'], $currentPage); ?>">
+                  <i data-lucide="scan-barcode" class="w-4 h-4 text-brand-300"></i>
+                  <span>Vonalkód & Olvasás</span>
+                  <i data-lucide="chevron-down" class="w-3.5 h-3.5 opacity-70 group-hover:rotate-180 transition-transform"></i>
+                </button>
+                <div class="hidden group-hover:block absolute left-0 top-full pt-1 z-50 animate-in fade-in zoom-in-95 duration-100 min-w-[250px]">
+                  <div class="bg-slate-800 border border-slate-700 rounded-2xl shadow-2xl p-1.5 space-y-1 backdrop-blur-xl">
+                    <a href="scanner.php" class="<?php echo dropdownItemClass('scanner.php', $currentPage); ?>">
+                      <i data-lucide="scan-barcode" class="w-4 h-4 text-brand-400"></i>
+                      <div>
+                        <div class="font-bold">Gyors Vonalkód Olvasó</div>
+                        <div class="text-[10px] text-slate-400 font-normal">Napi átadás & visszavétel</div>
+                      </div>
+                    </a>
+                    <?php if (canEdit()): ?>
+                      <a href="mobile.php" class="<?php echo dropdownItemClass('mobile.php', $currentPage); ?>">
+                        <i data-lucide="smartphone" class="w-4 h-4 text-emerald-400"></i>
+                        <div>
+                          <div class="font-bold text-emerald-300">📱 Mobil Olvasó Terminál</div>
+                          <div class="text-[10px] text-slate-400 font-normal">Kamerás egykezes felület</div>
+                        </div>
+                      </a>
+                      <a href="scanner_test.php" class="<?php echo dropdownItemClass('scanner_test.php', $currentPage); ?>">
+                        <i data-lucide="scan-line" class="w-4 h-4 text-indigo-400"></i>
+                        <div>
+                          <div class="font-bold">Vonalkód Tesztelő</div>
+                          <div class="text-[10px] text-slate-400 font-normal">Kockázatmentes sandbox</div>
+                        </div>
+                      </a>
+                    <?php endif; ?>
+                  </div>
+                </div>
+              </div>
+
+              <!-- 3. MUNKARUHÁK -->
+              <a href="clothes.php" class="<?php echo directLinkClass('clothes.php', $currentPage); ?>">
+                <i data-lucide="tags" class="w-4 h-4"></i>
+                <span>Munkaruhák</span>
               </a>
-              <a href="csv_export.php" class="<?php echo navClass('csv_export.php', $currentPage); ?>">
-                <i data-lucide="file-spreadsheet" class="w-4 h-4"></i>
-                <span>Leltár CSV</span>
+
+              <!-- 4. DOLGOZÓK -->
+              <a href="employees.php" class="<?php echo directLinkClass('employees.php', $currentPage); ?>">
+                <i data-lucide="users" class="w-4 h-4"></i>
+                <span>Dolgozók</span>
               </a>
+
+              <!-- 5. MOSODAI MŰVELETEK DROPDOWN -->
+              <div class="relative group">
+                <button type="button" class="<?php echo groupBtnClass(['batches.php', 'in_laundry.php'], $currentPage); ?>">
+                  <i data-lucide="truck" class="w-4 h-4"></i>
+                  <span>Mosoda</span>
+                  <i data-lucide="chevron-down" class="w-3.5 h-3.5 opacity-70 group-hover:rotate-180 transition-transform"></i>
+                </button>
+                <div class="hidden group-hover:block absolute left-0 top-full pt-1 z-50 animate-in fade-in zoom-in-95 duration-100 min-w-[240px]">
+                  <div class="bg-slate-800 border border-slate-700 rounded-2xl shadow-2xl p-1.5 space-y-1 backdrop-blur-xl">
+                    <a href="batches.php" class="<?php echo dropdownItemClass('batches.php', $currentPage); ?>">
+                      <i data-lucide="truck" class="w-4 h-4 text-amber-400"></i>
+                      <div>
+                        <div class="font-bold">Csomagok & Szállítólevelek</div>
+                        <div class="text-[10px] text-slate-400 font-normal">Átadás-átvételi ívek</div>
+                      </div>
+                    </a>
+                    <a href="in_laundry.php" class="<?php echo dropdownItemClass('in_laundry.php', $currentPage); ?>">
+                      <i data-lucide="clock" class="w-4 h-4 text-blue-400"></i>
+                      <div>
+                        <div class="font-bold">Mosásban Lévő Ruhák</div>
+                        <div class="text-[10px] text-slate-400 font-normal">Mosodában lévő készlet</div>
+                      </div>
+                    </a>
+                  </div>
+                </div>
+              </div>
+
+              <!-- 6. LELTÁR CSV IMPORT/EXPORT -->
+              <?php if (canEdit()): ?>
+                <a href="csv_import.php" class="<?php echo directLinkClass('csv_import.php', $currentPage); ?>" title="Leltár Export és Importálás">
+                  <i data-lucide="file-spreadsheet" class="w-4 h-4 text-emerald-400"></i>
+                  <span>Leltár CSV</span>
+                </a>
+              <?php endif; ?>
+
+            </div>
+
+            <!-- JOBB OLDAL: KIZÁRÓLAG ADMIN JOGOSULTSÁGÚ MENÜ (DROPDOWN) -->
+            <?php if (isAdmin()): ?>
+              <div class="relative group">
+                <button type="button" class="<?php echo groupBtnClass(['audit.php', 'users.php', 'settings.php', 'update.php'], $currentPage); ?>">
+                  <i data-lucide="shield-check" class="w-4 h-4 text-indigo-400"></i>
+                  <span>Adminisztráció</span>
+                  <i data-lucide="chevron-down" class="w-3.5 h-3.5 opacity-70 group-hover:rotate-180 transition-transform"></i>
+                </button>
+                <div class="hidden group-hover:block absolute right-0 top-full pt-1 z-50 animate-in fade-in zoom-in-95 duration-100 min-w-[240px]">
+                  <div class="bg-slate-800 border border-slate-700 rounded-2xl shadow-2xl p-1.5 space-y-1 backdrop-blur-xl">
+                    <a href="audit.php" class="<?php echo dropdownItemClass('audit.php', $currentPage); ?>">
+                      <i data-lucide="clipboard-list" class="w-4 h-4 text-slate-400"></i>
+                      <span>Eseménynapló (Audit)</span>
+                    </a>
+                    <a href="users.php" class="<?php echo dropdownItemClass('users.php', $currentPage); ?>">
+                      <i data-lucide="user-check" class="w-4 h-4 text-emerald-400"></i>
+                      <span>Felhasználók Kezelése</span>
+                    </a>
+                    <a href="settings.php" class="<?php echo dropdownItemClass('settings.php', $currentPage); ?>">
+                      <i data-lucide="sliders" class="w-4 h-4 text-amber-400"></i>
+                      <span>Rendszerbeállítások</span>
+                    </a>
+                    <a href="update.php" class="<?php echo dropdownItemClass('update.php', $currentPage); ?>">
+                      <i data-lucide="refresh-cw" class="w-4 h-4 text-brand-400"></i>
+                      <span>Rendszerfrissítés (GitHub)</span>
+                    </a>
+                  </div>
+                </div>
+              </div>
             <?php endif; ?>
 
-            <!-- KIZÁRÓLAG ADMIN JOGOSULTSÁGÚ MENÜPONTOK -->
-            <?php if (isAdmin()): ?>
-              <a href="audit.php" class="<?php echo navClass('audit.php', $currentPage); ?>">
-                <i data-lucide="clipboard-list" class="w-4 h-4"></i>
-                <span>Napló</span>
-              </a>
-              <a href="users.php" class="<?php echo navClass('users.php', $currentPage); ?>">
-                <i data-lucide="user-check" class="w-4 h-4"></i>
-                <span>Felhasználók</span>
-              </a>
-              <a href="settings.php" class="<?php echo navClass('settings.php', $currentPage); ?>">
-                <i data-lucide="sliders" class="w-4 h-4"></i>
-                <span>Beállítások</span>
-              </a>
-              <a href="update.php" class="<?php echo navClass('update.php', $currentPage); ?>">
-                <i data-lucide="refresh-cw" class="w-4 h-4"></i>
-                <span>Rendszerfrissítés</span>
-              </a>
-            <?php endif; ?>
           </div>
+
+          <!-- MOBIL & TABLET KOMPAKT MENÜSÁV (<LG) -->
+          <div class="lg:hidden flex items-center justify-between py-2">
+            <div class="flex items-center space-x-1.5 overflow-x-auto scrollbar-none py-0.5">
+              <a href="scanner.php" class="<?php echo directLinkClass('scanner.php', $currentPage); ?>">
+                <i data-lucide="scan-barcode" class="w-4 h-4"></i>
+                <span>Olvasó</span>
+              </a>
+              <?php if (canEdit()): ?>
+                <a href="mobile.php" class="<?php echo directLinkClass('mobile.php', $currentPage); ?>">
+                  <i data-lucide="smartphone" class="w-4 h-4 text-emerald-400"></i>
+                  <span>Mobil</span>
+                </a>
+              <?php endif; ?>
+              <a href="dashboard.php" class="<?php echo directLinkClass('dashboard.php', $currentPage); ?>">
+                <i data-lucide="layout-dashboard" class="w-4 h-4"></i>
+                <span>Kezdőlap</span>
+              </a>
+            </div>
+
+            <!-- Hamburger Menü Gomb -->
+            <button type="button" onclick="toggleMobileMenuDrawer()" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-white rounded-xl text-xs font-bold flex items-center space-x-1.5 border border-slate-700 shrink-0">
+              <i data-lucide="menu" class="w-4 h-4"></i>
+              <span>Összes Menü</span>
+            </button>
+          </div>
+
         </div>
       </nav>
+
+      <!-- MOBIL MENÜFIÓK (DRAWER MODAL) -->
+      <div id="mobile-menu-drawer" class="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md hidden flex justify-end">
+        <div class="w-full max-w-xs bg-slate-900 border-l border-slate-800 h-full p-5 space-y-6 overflow-y-auto shadow-2xl flex flex-col justify-between">
+          <div class="space-y-4">
+            <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+              <div class="flex items-center space-x-2">
+                <div class="w-8 h-8 rounded-xl bg-brand-600 text-white flex items-center justify-center">
+                  <i data-lucide="shirt" class="w-4 h-4"></i>
+                </div>
+                <span class="font-bold text-white text-sm">Menüpontok</span>
+              </div>
+              <button type="button" onclick="toggleMobileMenuDrawer()" class="p-2 text-slate-400 hover:text-white rounded-xl">
+                <i data-lucide="x" class="w-5 h-5"></i>
+              </button>
+            </div>
+
+            <div class="space-y-1 text-xs">
+              <div class="text-[10px] font-bold uppercase tracking-wider text-slate-500 pt-2 pb-1">Vonalkód & Kezelés</div>
+              <a href="scanner.php" class="<?php echo dropdownItemClass('scanner.php', $currentPage); ?>"><i data-lucide="scan-barcode" class="w-4 h-4 text-brand-400"></i><span>Gyors Vonalkód Olvasó</span></a>
+              <?php if (canEdit()): ?>
+                <a href="mobile.php" class="<?php echo dropdownItemClass('mobile.php', $currentPage); ?>"><i data-lucide="smartphone" class="w-4 h-4 text-emerald-400"></i><span class="text-emerald-300 font-bold">📱 Mobil Terminál</span></a>
+                <a href="scanner_test.php" class="<?php echo dropdownItemClass('scanner_test.php', $currentPage); ?>"><i data-lucide="scan-line" class="w-4 h-4 text-indigo-400"></i><span>Vonalkód Tesztelő</span></a>
+              <?php endif; ?>
+
+              <div class="text-[10px] font-bold uppercase tracking-wider text-slate-500 pt-3 pb-1">Nyilvántartás & Készlet</div>
+              <a href="dashboard.php" class="<?php echo dropdownItemClass('dashboard.php', $currentPage); ?>"><i data-lucide="layout-dashboard" class="w-4 h-4"></i><span>Vezérlőpult</span></a>
+              <a href="clothes.php" class="<?php echo dropdownItemClass('clothes.php', $currentPage); ?>"><i data-lucide="tags" class="w-4 h-4"></i><span>Munkaruhák</span></a>
+              <a href="employees.php" class="<?php echo dropdownItemClass('employees.php', $currentPage); ?>"><i data-lucide="users" class="w-4 h-4"></i><span>Dolgozók</span></a>
+              <?php if (canEdit()): ?>
+                <a href="csv_import.php" class="<?php echo dropdownItemClass('csv_import.php', $currentPage); ?>"><i data-lucide="file-spreadsheet" class="w-4 h-4 text-emerald-400"></i><span>Leltár CSV Export / Import</span></a>
+              <?php endif; ?>
+
+              <div class="text-[10px] font-bold uppercase tracking-wider text-slate-500 pt-3 pb-1">Mosoda</div>
+              <a href="batches.php" class="<?php echo dropdownItemClass('batches.php', $currentPage); ?>"><i data-lucide="truck" class="w-4 h-4 text-amber-400"></i><span>Csomagok & Szállítólevelek</span></a>
+              <a href="in_laundry.php" class="<?php echo dropdownItemClass('in_laundry.php', $currentPage); ?>"><i data-lucide="clock" class="w-4 h-4 text-blue-400"></i><span>Mosásban Lévő Ruhák</span></a>
+
+              <?php if (isAdmin()): ?>
+                <div class="text-[10px] font-bold uppercase tracking-wider text-slate-500 pt-3 pb-1">Adminisztráció</div>
+                <a href="audit.php" class="<?php echo dropdownItemClass('audit.php', $currentPage); ?>"><i data-lucide="clipboard-list" class="w-4 h-4"></i><span>Eseménynapló (Audit)</span></a>
+                <a href="users.php" class="<?php echo dropdownItemClass('users.php', $currentPage); ?>"><i data-lucide="user-check" class="w-4 h-4 text-emerald-400"></i><span>Felhasználók</span></a>
+                <a href="settings.php" class="<?php echo dropdownItemClass('settings.php', $currentPage); ?>"><i data-lucide="sliders" class="w-4 h-4 text-amber-400"></i><span>Beállítások</span></a>
+                <a href="update.php" class="<?php echo dropdownItemClass('update.php', $currentPage); ?>"><i data-lucide="refresh-cw" class="w-4 h-4 text-brand-400"></i><span>Rendszerfrissítés</span></a>
+              <?php endif; ?>
+            </div>
+          </div>
+
+          <div class="pt-4 border-t border-slate-800 text-[11px] text-slate-500 text-center">
+            HGA Biomed Munkaruha <?php echo escape(getAppVersion()); ?>
+          </div>
+        </div>
+      </div>
+
+      <script>
+        function toggleMobileMenuDrawer() {
+          const drawer = document.getElementById('mobile-menu-drawer');
+          drawer.classList.toggle('hidden');
+          if (window.lucide) lucide.createIcons();
+        }
+      </script>
     </header>
 
     <?php $flash = getFlashMessage(); ?>
