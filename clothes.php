@@ -153,10 +153,16 @@ require_once __DIR__ . '/includes/header.php';
         <p class="text-xs text-slate-500">Keresés, szűrés, dolgozókhoz rendelés, mosási ciklusszámláló és leltárkövetés</p>
       </div>
       <?php if (canEdit()): ?>
-        <button onclick="openClothModal()" class="px-4 py-2.5 bg-brand-600 hover:bg-brand-700 text-white font-semibold text-sm rounded-xl transition-all flex items-center space-x-2 shadow-sm">
-          <i data-lucide="plus" class="w-4 h-4"></i>
-          <span>Új Ruha Hozzáadása</span>
-        </button>
+        <div class="flex items-center space-x-2">
+          <a href="csv_import.php" class="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-sm rounded-xl transition-all flex items-center space-x-2 border border-slate-200 shadow-2xs">
+            <i data-lucide="file-spreadsheet" class="w-4 h-4 text-emerald-600"></i>
+            <span>📥 CSV Import & Export</span>
+          </a>
+          <button onclick="openClothModal()" class="px-4 py-2.5 bg-brand-600 hover:bg-brand-700 text-white font-semibold text-sm rounded-xl transition-all flex items-center space-x-2 shadow-sm">
+            <i data-lucide="plus" class="w-4 h-4"></i>
+            <span>Új Ruha Hozzáadása</span>
+          </button>
+        </div>
       <?php endif; ?>
     </div>
 
