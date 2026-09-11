@@ -234,65 +234,100 @@ require_once __DIR__ . '/includes/header.php';
   </div>
 </div>
 
+<style>
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  #batch-modal, #batch-modal * {
+    visibility: visible;
+  }
+  #batch-modal {
+    position: absolute !important;
+    left: 0 !important;
+    top: 0 !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: white !important;
+    display: block !important;
+  }
+  #batch-modal .bg-white {
+    box-shadow: none !important;
+    border: none !important;
+    padding: 8mm !important;
+    max-width: 100% !important;
+    width: 100% !important;
+  }
+  .print\:hidden {
+    display: none !important;
+  }
+  @page {
+    size: A4 portrait;
+    margin: 8mm;
+  }
+}
+</style>
+
 <!-- NYOMTATHATÓ SZÁLLÍTÓLEVÉL MODÁL -->
 <div id="batch-modal" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/70 backdrop-blur-xs hidden p-4 overflow-y-auto">
-  <div class="bg-white rounded-2xl shadow-2xl border border-slate-200 max-w-3xl w-full p-8 space-y-6 my-auto">
-    <div id="printable-area" class="space-y-6 text-slate-800">
-      <div class="border-b-2 border-slate-800 pb-4 flex justify-between items-start">
+  <div class="bg-white rounded-2xl shadow-2xl border border-slate-200 max-w-3xl w-full p-6 space-y-4 my-auto">
+    <div id="printable-area" class="space-y-4 text-slate-800">
+      <div class="border-b-2 border-slate-800 pb-3 flex justify-between items-start">
         <div>
-          <h1 class="text-2xl font-black tracking-tight text-slate-900">HGA Biomed Kft.</h1>
-          <p class="text-xs text-slate-600 font-semibold mt-1">MUNKARUHA MOSODAI ÁTADÁS-ÁTVÉTELI JEGYZÉK</p>
+          <h1 class="text-xl font-black tracking-tight text-slate-900">HGA Biomed Kft.</h1>
+          <p class="text-[11px] text-slate-600 font-semibold mt-0.5">MUNKARUHA MOSODAI ÁTADÁS-ÁTVÉTELI JEGYZÉK</p>
         </div>
         <div class="text-right">
-          <p class="text-xs text-slate-500 font-bold uppercase">Bizonylatszám</p>
-          <p id="print-batch-number" class="text-lg font-mono font-black text-slate-900"></p>
-          <p id="print-batch-date" class="text-xs text-slate-500 font-medium mt-0.5"></p>
+          <p class="text-[10px] text-slate-500 font-bold uppercase">Bizonylatszám</p>
+          <p id="print-batch-number" class="text-base font-mono font-black text-slate-900"></p>
+          <p id="print-batch-date" class="text-[11px] text-slate-500 font-medium mt-0.5"></p>
         </div>
       </div>
 
-      <div class="grid grid-cols-2 gap-6 bg-slate-50 p-4 rounded-xl text-xs border border-slate-200">
+      <div class="grid grid-cols-2 gap-4 bg-slate-50 p-3 rounded-xl text-xs border border-slate-200">
         <div>
-          <span class="font-bold text-slate-500 uppercase block mb-1">Küldő / Kiadó Telephely:</span>
+          <span class="font-bold text-slate-500 uppercase block mb-0.5 text-[10px]">Küldő / Kiadó Telephely:</span>
           <p id="print-location-name" class="font-bold text-slate-900 text-sm">HGA Biomed</p>
           <p id="print-location-address" class="text-slate-600"></p>
-          <p class="text-slate-500 mt-1">Kezelő: <span id="print-user-name" class="font-semibold text-slate-800"></span></p>
+          <p class="text-slate-500 mt-0.5">Kezelő: <span id="print-user-name" class="font-semibold text-slate-800"></span></p>
         </div>
         <div>
-          <span class="font-bold text-slate-500 uppercase block mb-1">Művelet Jellege:</span>
+          <span class="font-bold text-slate-500 uppercase block mb-0.5 text-[10px]">Művelet Jellege:</span>
           <p id="print-direction-label" class="font-black text-brand-700 text-sm"></p>
           <p class="text-slate-600">Mosodai Szolgáltató részére</p>
-          <p class="text-slate-500 mt-1">Összes darabszám: <span id="print-total-count" class="font-black text-slate-900 text-sm">0 db</span></p>
+          <p class="text-slate-500 mt-0.5">Összes darabszám: <span id="print-total-count" class="font-black text-slate-900 text-sm">0 db</span></p>
         </div>
       </div>
 
-      <div id="print-category-breakdown" class="flex flex-wrap gap-2 text-xs"></div>
+      <div id="print-category-breakdown" class="flex flex-wrap gap-1.5 text-xs"></div>
 
       <table class="min-w-full divide-y divide-slate-300 text-xs">
         <thead class="bg-slate-100 font-bold text-slate-700 text-left">
           <tr>
-            <th class="py-2 px-3">Ssz.</th>
-            <th class="py-2 px-3">Vonalkód</th>
-            <th class="py-2 px-3">Megnevezés</th>
-            <th class="py-2 px-3">Méret</th>
-            <th class="py-2 px-3">Dolgozó / Tartalék</th>
+            <th class="py-1.5 px-2">Ssz.</th>
+            <th class="py-1.5 px-2">Vonalkód</th>
+            <th class="py-1.5 px-2">Megnevezés</th>
+            <th class="py-1.5 px-2">Méret</th>
+            <th class="py-1.5 px-2">Dolgozó / Tartalék</th>
           </tr>
         </thead>
-        <tbody id="print-items-body" class="divide-y divide-slate-200 font-mono"></tbody>
+        <tbody id="print-items-body" class="divide-y divide-slate-200 font-mono text-[11px]"></tbody>
       </table>
 
-      <div class="grid grid-cols-2 gap-12 pt-12 border-t border-slate-200 text-center text-xs">
+      <div class="grid grid-cols-2 gap-12 pt-6 border-t border-slate-200 text-center text-xs">
         <div>
-          <div class="border-b border-slate-400 pb-1 mb-2"></div>
+          <div class="border-b border-slate-400 pb-1 mb-1"></div>
           <p class="font-bold text-slate-800">Átadó (HGA Biomed Kft.)</p>
         </div>
         <div>
-          <div class="border-b border-slate-400 pb-1 mb-2"></div>
+          <div class="border-b border-slate-400 pb-1 mb-1"></div>
           <p class="font-bold text-slate-800">Átvevő (Mosoda)</p>
         </div>
       </div>
     </div>
 
-    <div class="flex justify-end space-x-3 pt-4 border-t border-slate-100 print:hidden">
+    <div class="flex justify-end space-x-3 pt-3 border-t border-slate-100 print:hidden">
       <button id="close-print-modal-btn" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-semibold rounded-xl">Bezárás</button>
       <button onclick="window.print()" class="px-5 py-2 bg-brand-600 hover:bg-brand-700 text-white text-sm font-bold rounded-xl shadow-md flex items-center space-x-1.5">
         <i data-lucide="printer" class="w-4 h-4"></i>

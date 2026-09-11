@@ -13,7 +13,7 @@ $inLaundry = $db->fetchOne("SELECT COUNT(*) as c FROM clothes WHERE status = 'IN
 $activeClothes = $db->fetchOne("SELECT COUNT(*) as c FROM clothes WHERE status = 'ACTIVE'" . $locAnd)['c'];
 $reserveClothes = $db->fetchOne("SELECT COUNT(*) as c FROM clothes WHERE status = 'RESERVE'" . $locAnd)['c'];
 $lostClothes = $db->fetchOne("SELECT COUNT(*) as c FROM clothes WHERE status = 'LOST'" . $locAnd)['c'];
-$nearLimitClothes = $db->fetchOne("SELECT COUNT(*) as c FROM clothes WHERE wash_count >= max_wash_count AND status NOT IN ('SCRAPPED', 'LOST')" . $locAnd)['c'] ?? 0;
+$scrappedClothes = $db->fetchOne("SELECT COUNT(*) as c FROM clothes WHERE status = 'SCRAPPED'" . $locAnd)['c'];
 $totalNetValue = $db->fetchOne("SELECT SUM(net_value) as s FROM clothes" . $locWhere)['s'] ?: 0;
 
 $categories = $db->fetchAll("SELECT category, COUNT(*) as count FROM clothes" . $locWhere . " GROUP BY category");
@@ -36,7 +36,9 @@ $locations = $db->fetchAll("
     (SELECT COUNT(*) FROM clothes c WHERE c.location_id = l.id) as total_clothes,
     (SELECT COUNT(*) FROM clothes c WHERE c.location_id = l.id AND c.status = 'ACTIVE') as active_clothes,
     (SELECT COUNT(*) FROM clothes c WHERE c.location_id = l.id AND c.status = 'IN_LAUNDRY') as in_laundry_clothes,
-    (SELECT COUNT(*) FROM clothes c WHERE c.location_id = l.id AND c.status = 'RESERVE') as reserve_clothes
+    (SELECT COUNT(*) FROM clothes c WHERE c.location_id = l.id AND c.status = 'RESERVE') as reserve_clothes,
+    (SELECT COUNT(*) FROM clothes c WHERE c.location_id = l.id AND c.status = 'LOST') as lost_clothes,
+    (SELECT COUNT(*) FROM clothes c WHERE c.location_id = l.id AND c.status = 'SCRAPPED') as scrapped_clothes
   FROM locations l ORDER BY l.id ASC
 ");
 
@@ -44,60 +46,99 @@ require_once __DIR__ . '/includes/header.php';
 ?>
 
 <div class="space-y-6">
-  <?php if ($nearLimitClothes > 0): ?>
-    <div class="p-4 bg-amber-50 border border-amber-200 rounded-2xl flex items-center justify-between shadow-xs">
-      <div class="flex items-center space-x-3 text-amber-900 text-sm font-medium">
-        <i data-lucide="alert-triangle" class="w-5 h-5 text-amber-600 shrink-0"></i>
-        <span><strong>Csereérett munkaruhák figyelmeztetés:</strong> Jelenleg <strong><?php echo $nearLimitClothes; ?> db</strong> munkaruha elérte az ajánlott maximális mosási ciklusszámot (anyagfáradás / csere indokolt).</span>
+  <!-- INTERAKTÍV FŐ STATISZTIKAI KÁRTYÁK (KATTINTÁSRA AZONNALI SZŰRÉS) -->
+  <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+    
+    <!-- 1. Összes Ruha -->
+    <a href="clothes.php" class="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs hover:border-slate-400 hover:shadow-md hover:scale-[1.02] transition-all cursor-pointer flex flex-col justify-between block group">
+      <div>
+        <div class="flex items-center justify-between text-slate-500 mb-2">
+          <span class="text-xs font-bold uppercase tracking-wider group-hover:text-slate-900 transition-colors">Összes Ruha</span>
+          <div class="p-2 rounded-xl bg-slate-100 text-slate-700 group-hover:bg-slate-200"><i data-lucide="layers" class="w-4 h-4"></i></div>
+        </div>
+        <p class="text-2xl font-black text-slate-900"><?php echo number_format($totalClothes, 0, ',', ' '); ?> db</p>
       </div>
-      <a href="clothes.php" class="px-3.5 py-1.5 bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs rounded-xl shadow-xs transition-all whitespace-nowrap">Ruhák megtekintése &rarr;</a>
-    </div>
-  <?php endif; ?>
-  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-    <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs">
-      <div class="flex items-center justify-between text-slate-500 mb-2">
-        <span class="text-xs font-bold uppercase tracking-wider">Összes Ruha</span>
-        <div class="p-2 rounded-xl bg-slate-100 text-slate-700"><i data-lucide="layers" class="w-5 h-5"></i></div>
-      </div>
-      <p class="text-3xl font-black text-slate-900"><?php echo number_format($totalClothes, 0, ',', ' '); ?> db</p>
-      <span class="text-xs text-slate-400 font-medium">Leltárban rögzítve</span>
-    </div>
+      <span class="text-[11px] text-slate-400 font-medium mt-2 flex items-center justify-between">
+        <span>Teljes állomány</span>
+        <span class="text-brand-600 font-bold opacity-0 group-hover:opacity-100 transition-opacity">&rarr;</span>
+      </span>
+    </a>
 
-    <div class="bg-white p-5 rounded-2xl border border-amber-200 bg-amber-50/30 shadow-xs">
-      <div class="flex items-center justify-between text-amber-600 mb-2">
-        <span class="text-xs font-bold uppercase tracking-wider">Mosásban</span>
-        <div class="p-2 rounded-xl bg-amber-100 text-amber-700"><i data-lucide="waves" class="w-5 h-5"></i></div>
+    <!-- 2. Mosásban -->
+    <a href="in_laundry.php" class="bg-white p-5 rounded-2xl border border-amber-200 bg-amber-50/20 shadow-xs hover:border-amber-400 hover:shadow-md hover:scale-[1.02] transition-all cursor-pointer flex flex-col justify-between block group">
+      <div>
+        <div class="flex items-center justify-between text-amber-600 mb-2">
+          <span class="text-xs font-bold uppercase tracking-wider group-hover:text-amber-800 transition-colors">Mosásban</span>
+          <div class="p-2 rounded-xl bg-amber-100 text-amber-700 group-hover:bg-amber-200"><i data-lucide="waves" class="w-4 h-4"></i></div>
+        </div>
+        <p class="text-2xl font-black text-amber-700"><?php echo number_format($inLaundry, 0, ',', ' '); ?> db</p>
       </div>
-      <p class="text-3xl font-black text-amber-700"><?php echo number_format($inLaundry, 0, ',', ' '); ?> db</p>
-      <span class="text-xs text-amber-600/80 font-medium">Mosodánál lévő tételek</span>
-    </div>
+      <span class="text-[11px] text-amber-700/80 font-medium mt-2 flex items-center justify-between">
+        <span>Mosodánál lévő</span>
+        <span class="text-amber-700 font-bold opacity-0 group-hover:opacity-100 transition-opacity">&rarr;</span>
+      </span>
+    </a>
 
-    <div class="bg-white p-5 rounded-2xl border border-emerald-200 bg-emerald-50/30 shadow-xs">
-      <div class="flex items-center justify-between text-emerald-600 mb-2">
-        <span class="text-xs font-bold uppercase tracking-wider">Dolgozónál</span>
-        <div class="p-2 rounded-xl bg-emerald-100 text-emerald-700"><i data-lucide="user-check" class="w-5 h-5"></i></div>
+    <!-- 3. Dolgozónál -->
+    <a href="clothes.php?status=ACTIVE" class="bg-white p-5 rounded-2xl border border-emerald-200 bg-emerald-50/20 shadow-xs hover:border-emerald-400 hover:shadow-md hover:scale-[1.02] transition-all cursor-pointer flex flex-col justify-between block group">
+      <div>
+        <div class="flex items-center justify-between text-emerald-600 mb-2">
+          <span class="text-xs font-bold uppercase tracking-wider group-hover:text-emerald-800 transition-colors">Dolgozónál</span>
+          <div class="p-2 rounded-xl bg-emerald-100 text-emerald-700 group-hover:bg-emerald-200"><i data-lucide="user-check" class="w-4 h-4"></i></div>
+        </div>
+        <p class="text-2xl font-black text-emerald-700"><?php echo number_format($activeClothes, 0, ',', ' '); ?> db</p>
       </div>
-      <p class="text-3xl font-black text-emerald-700"><?php echo number_format($activeClothes, 0, ',', ' '); ?> db</p>
-      <span class="text-xs text-emerald-600/80 font-medium">Kiosztott tiszta ruhák</span>
-    </div>
+      <span class="text-[11px] text-emerald-700/80 font-medium mt-2 flex items-center justify-between">
+        <span>Kiosztott aktív</span>
+        <span class="text-emerald-700 font-bold opacity-0 group-hover:opacity-100 transition-opacity">&rarr;</span>
+      </span>
+    </a>
 
-    <div class="bg-white p-5 rounded-2xl border border-blue-200 bg-blue-50/30 shadow-xs">
-      <div class="flex items-center justify-between text-blue-600 mb-2">
-        <span class="text-xs font-bold uppercase tracking-wider">Tartalék</span>
-        <div class="p-2 rounded-xl bg-blue-100 text-blue-700"><i data-lucide="package" class="w-5 h-5"></i></div>
+    <!-- 4. Tartalék -->
+    <a href="clothes.php?status=RESERVE" class="bg-white p-5 rounded-2xl border border-blue-200 bg-blue-50/20 shadow-xs hover:border-blue-400 hover:shadow-md hover:scale-[1.02] transition-all cursor-pointer flex flex-col justify-between block group">
+      <div>
+        <div class="flex items-center justify-between text-blue-600 mb-2">
+          <span class="text-xs font-bold uppercase tracking-wider group-hover:text-blue-800 transition-colors">Tartalék</span>
+          <div class="p-2 rounded-xl bg-blue-100 text-blue-700 group-hover:bg-blue-200"><i data-lucide="package" class="w-4 h-4"></i></div>
+        </div>
+        <p class="text-2xl font-black text-blue-700"><?php echo number_format($reserveClothes, 0, ',', ' '); ?> db</p>
       </div>
-      <p class="text-3xl font-black text-blue-700"><?php echo number_format($reserveClothes, 0, ',', ' '); ?> db</p>
-      <span class="text-xs text-blue-600/80 font-medium">Raktáron lévő készlet</span>
-    </div>
+      <span class="text-[11px] text-blue-700/80 font-medium mt-2 flex items-center justify-between">
+        <span>Raktáron lévő</span>
+        <span class="text-blue-700 font-bold opacity-0 group-hover:opacity-100 transition-opacity">&rarr;</span>
+      </span>
+    </a>
 
-    <div class="bg-white p-5 rounded-2xl border border-red-200 bg-red-50/30 shadow-xs">
-      <div class="flex items-center justify-between text-red-600 mb-2">
-        <span class="text-xs font-bold uppercase tracking-wider">Hiányzó / Selejt</span>
-        <div class="p-2 rounded-xl bg-red-100 text-red-700"><i data-lucide="alert-triangle" class="w-5 h-5"></i></div>
+    <!-- 5. Hiányzó / Elveszett -->
+    <a href="clothes.php?status=LOST" class="bg-white p-5 rounded-2xl border border-red-200 bg-red-50/20 shadow-xs hover:border-red-400 hover:shadow-md hover:scale-[1.02] transition-all cursor-pointer flex flex-col justify-between block group">
+      <div>
+        <div class="flex items-center justify-between text-red-600 mb-2">
+          <span class="text-xs font-bold uppercase tracking-wider group-hover:text-red-800 transition-colors">Hiányzó</span>
+          <div class="p-2 rounded-xl bg-red-100 text-red-700 group-hover:bg-red-200"><i data-lucide="alert-circle" class="w-4 h-4"></i></div>
+        </div>
+        <p class="text-2xl font-black text-red-700"><?php echo number_format($lostClothes, 0, ',', ' '); ?> db</p>
       </div>
-      <p class="text-3xl font-black text-red-700"><?php echo number_format($lostClothes, 0, ',', ' '); ?> db</p>
-      <span class="text-xs text-red-600/80 font-medium">Elveszett vagy selejtezett</span>
-    </div>
+      <span class="text-[11px] text-red-700/80 font-medium mt-2 flex items-center justify-between">
+        <span>Elveszett / nincs meg</span>
+        <span class="text-red-700 font-bold opacity-0 group-hover:opacity-100 transition-opacity">&rarr;</span>
+      </span>
+    </a>
+
+    <!-- 6. Selejtezve -->
+    <a href="clothes.php?status=SCRAPPED" class="bg-white p-5 rounded-2xl border border-slate-300 bg-slate-100/40 shadow-xs hover:border-slate-500 hover:shadow-md hover:scale-[1.02] transition-all cursor-pointer flex flex-col justify-between block group">
+      <div>
+        <div class="flex items-center justify-between text-slate-700 mb-2">
+          <span class="text-xs font-bold uppercase tracking-wider group-hover:text-slate-900 transition-colors">Selejtezett</span>
+          <div class="p-2 rounded-xl bg-slate-200 text-slate-800 group-hover:bg-slate-300"><i data-lucide="trash-2" class="w-4 h-4"></i></div>
+        </div>
+        <p class="text-2xl font-black text-slate-800"><?php echo number_format($scrappedClothes, 0, ',', ' '); ?> db</p>
+      </div>
+      <span class="text-[11px] text-slate-600 font-medium mt-2 flex items-center justify-between">
+        <span>Selejtezett tételek</span>
+        <span class="text-slate-800 font-bold opacity-0 group-hover:opacity-100 transition-opacity">&rarr;</span>
+      </span>
+    </a>
+
   </div>
 
   <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -126,64 +167,72 @@ require_once __DIR__ . '/includes/header.php';
         </h3>
         <div class="space-y-3">
           <?php foreach ($locations as $loc): ?>
-            <div class="p-3.5 bg-slate-50 border border-slate-200 rounded-xl">
-              <div class="flex items-center justify-between font-bold text-sm text-slate-800 mb-1">
+            <div class="p-3.5 bg-slate-50 border border-slate-200 rounded-xl space-y-1.5">
+              <div class="flex items-center justify-between font-bold text-sm text-slate-800">
                 <span><?php echo escape($loc['code'] . '. ' . ($loc['short_name'] ?: $loc['name'])); ?></span>
                 <span class="text-brand-600"><?php echo $loc['total_clothes']; ?> db ruha</span>
               </div>
-              <div class="grid grid-cols-3 gap-2 text-xs text-slate-500 font-medium">
+              <div class="grid grid-cols-3 gap-1.5 text-[11px] text-slate-500 font-medium">
                 <span>Dolgozónál: <strong class="text-emerald-700"><?php echo $loc['active_clothes']; ?></strong></span>
                 <span>Mosásban: <strong class="text-amber-700"><?php echo $loc['in_laundry_clothes']; ?></strong></span>
                 <span>Tartalék: <strong class="text-blue-700"><?php echo $loc['reserve_clothes']; ?></strong></span>
+              </div>
+              <div class="grid grid-cols-2 gap-1.5 text-[11px] text-slate-500 font-medium pt-1 border-t border-slate-200/60">
+                <span>Hiányzó: <strong class="text-red-700"><?php echo $loc['lost_clothes']; ?></strong></span>
+                <span>Selejt: <strong class="text-slate-800"><?php echo $loc['scrapped_clothes']; ?></strong></span>
               </div>
             </div>
           <?php endforeach; ?>
         </div>
       </div>
-      <div class="mt-4 pt-4 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
-        <span>Teljes amortizációs leltárérték:</span>
-        <span class="font-bold text-slate-900 text-sm"><?php echo number_format($totalNetValue, 0, ',', ' '); ?> Ft</span>
+      <div class="mt-4 pt-4 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500 font-semibold">
+        <span>Leltári összérték:</span>
+        <span class="text-sm font-black text-slate-900"><?php echo number_format($totalNetValue, 0, ',', ' '); ?> Ft</span>
       </div>
     </div>
   </div>
 
-  <div class="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
-    <div class="px-6 py-4 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
+  <!-- Utolsó aktivitások -->
+  <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-xs">
+    <div class="flex items-center justify-between mb-4">
       <h3 class="font-bold text-slate-900 flex items-center">
         <i data-lucide="history" class="w-4 h-4 mr-2 text-slate-500"></i> Legutóbbi Mosodai Mozgások
       </h3>
-      <span class="text-xs text-slate-500 font-medium">Valós idejű audit napló</span>
+      <a href="batches.php" class="text-xs text-brand-600 font-bold hover:underline">Összes megtekintése &rarr;</a>
     </div>
+
     <div class="overflow-x-auto">
-      <table class="min-w-full divide-y divide-slate-200 text-sm">
-        <thead class="bg-slate-50/50 text-slate-500 text-xs font-bold text-left uppercase">
+      <table class="min-w-full divide-y divide-slate-200 text-xs">
+        <thead class="bg-slate-50 font-bold text-slate-600 text-left">
           <tr>
-            <th class="px-6 py-3">Időpont</th>
-            <th class="px-6 py-3">Irány</th>
-            <th class="px-6 py-3">Vonalkód</th>
-            <th class="px-6 py-3">Megnevezés</th>
-            <th class="px-6 py-3">Dolgozó</th>
-            <th class="px-6 py-3">Telephely</th>
-            <th class="px-6 py-3">Kezelő</th>
+            <th class="py-2.5 px-3">Időpont</th>
+            <th class="py-2.5 px-3">Vonalkód</th>
+            <th class="py-2.5 px-3">Megnevezés</th>
+            <th class="py-2.5 px-3">Dolgozó</th>
+            <th class="py-2.5 px-3">Művelet</th>
+            <th class="py-2.5 px-3">Telephely</th>
+            <th class="py-2.5 px-3">Kezelő</th>
           </tr>
         </thead>
-        <tbody class="divide-y divide-slate-100 bg-white">
+        <tbody class="divide-y divide-slate-100 font-mono">
           <?php if (empty($recentActivity)): ?>
-            <tr><td colspan="7" class="px-6 py-6 text-center text-slate-400">Még nincs rögzített mosodai mozgás</td></tr>
+            <tr><td colspan="7" class="py-4 text-center text-slate-400 font-sans">Még nincs rögzített mosodai mozgás.</td></tr>
           <?php else: ?>
-            <?php foreach ($recentActivity as $r): ?>
-              <tr class="hover:bg-slate-50">
-                <td class="px-6 py-3 font-mono text-xs text-slate-500"><?php echo date('Y.m.d H:i', strtotime($r['scanned_at'])); ?></td>
-                <td class="px-6 py-3">
-                  <span class="px-2.5 py-1 text-xs font-bold rounded-full <?php echo $r['direction'] === 'OUT' ? 'bg-amber-100 text-amber-800' : 'bg-emerald-100 text-emerald-800'; ?>">
-                    <?php echo $r['direction'] === 'OUT' ? 'Mosodába' : 'Mosodából'; ?>
-                  </span>
+            <?php foreach ($recentActivity as $act): ?>
+              <tr>
+                <td class="py-2.5 px-3 text-slate-500"><?php echo date('Y.m.d H:i', strtotime($act['scanned_at'])); ?></td>
+                <td class="py-2.5 px-3 font-bold text-slate-900"><?php echo escape($act['barcode']); ?></td>
+                <td class="py-2.5 px-3 font-sans font-medium text-slate-800"><?php echo escape($act['cloth_name']); ?></td>
+                <td class="py-2.5 px-3 font-sans text-slate-600"><?php echo escape($act['employee_name'] ?: 'Tartalék'); ?></td>
+                <td class="py-2.5 px-3 font-sans">
+                  <?php if ($act['direction'] === 'OUT'): ?>
+                    <span class="px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 font-bold">Mosodába küldve</span>
+                  <?php else: ?>
+                    <span class="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-bold">Mosásból visszavéve</span>
+                  <?php endif; ?>
                 </td>
-                <td class="px-6 py-3 font-mono font-bold text-slate-800"><?php echo escape($r['barcode']); ?></td>
-                <td class="px-6 py-3 font-medium text-slate-900"><?php echo escape($r['cloth_name']); ?></td>
-                <td class="px-6 py-3 text-slate-700"><?php echo escape($r['employee_name'] ?: 'Tartalék'); ?></td>
-                <td class="px-6 py-3 text-slate-600"><?php echo escape($r['location_short'] ?: '-'); ?></td>
-                <td class="px-6 py-3 text-slate-500 text-xs"><?php echo escape($r['user_name'] ?: '-'); ?></td>
+                <td class="py-2.5 px-3 font-sans text-slate-500"><?php echo escape($act['location_short'] ?: '-'); ?></td>
+                <td class="py-2.5 px-3 font-sans text-slate-500"><?php echo escape($act['user_name'] ?: 'Rendszer'); ?></td>
               </tr>
             <?php endforeach; ?>
           <?php endif; ?>
@@ -194,29 +243,46 @@ require_once __DIR__ . '/includes/header.php';
 </div>
 
 <script>
-  document.addEventListener('DOMContentLoaded', () => {
-    const catLabels = <?php echo json_encode(array_column($categories, 'category')); ?>;
-    const catData = <?php echo json_encode(array_column($categories, 'count')); ?>;
+document.addEventListener('DOMContentLoaded', () => {
+  const catData = <?php echo json_encode($categories); ?>;
+  const colData = <?php echo json_encode($colors); ?>;
+
+  if (catData.length > 0) {
     new Chart(document.getElementById('categoryChart'), {
       type: 'doughnut',
       data: {
-        labels: catLabels.length ? catLabels : ['Nincs adat'],
-        datasets: [{ data: catData.length ? catData : [1], backgroundColor: ['#16a34a', '#2563eb', '#f59e0b', '#8b5cf6', '#64748b'] }]
+        labels: catData.map(d => d.category),
+        datasets: [{
+          data: catData.map(d => d.count),
+          backgroundColor: ['#16a34a', '#2563eb', '#f59e0b', '#dc2626', '#8b5cf6', '#64748b']
+        }]
       },
-      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 11 } } } } }
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 10 } } } }
+      }
     });
+  }
 
-    const colLabels = <?php echo json_encode(array_column($colors, 'color')); ?>;
-    const colData = <?php echo json_encode(array_column($colors, 'count')); ?>;
+  if (colData.length > 0) {
     new Chart(document.getElementById('colorChart'), {
       type: 'pie',
       data: {
-        labels: colLabels.length ? colLabels : ['Nincs adat'],
-        datasets: [{ data: colData.length ? colData : [1], backgroundColor: ['#e2e8f0', '#15803d', '#14532d', '#1d4ed8', '#94a3b8'] }]
+        labels: colData.map(d => d.color),
+        datasets: [{
+          data: colData.map(d => d.count),
+          backgroundColor: ['#e2e8f0', '#15803d', '#166534', '#3b82f6', '#94a3b8']
+        }]
       },
-      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 11 } } } } }
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 10 } } } }
+      }
     });
-  });
+  }
+});
 </script>
 
 <?php require_once __DIR__ . '/includes/footer.php'; ?>

@@ -214,9 +214,9 @@ $version = getAppVersion();
           Bármelyik dolgozó kártyáján a <strong>„Nyilatkozat”</strong> gombra kattintva azonnal legenerálható a munkajogi szempontból hiteles elismervény.
         </p>
         <ul class="list-disc list-inside space-y-1 text-slate-600">
-          <li>Tartalmazza a dolgozóhoz rendelt összes ruha adatait (vonalkód, név, méret, mosásszám).</li>
+          <li>Tartalmazza a dolgozóhoz rendelt összes ruha pontos adatait (vonalkód, megnevezés, méret, cikkszám).</li>
           <li>Felelősségvállalási záradék a ruhák megóvásáról és kilépéskori elszámolásról.</li>
-          <li>Kétoldalú aláírási vonal: <em>Kiadó (Raktáros)</em> és <em>Átvevő (Munkavállaló)</em>.</li>
+          <li>Kétoldalú aláírási vonal: <em>Kiadó (Munkáltató által megbízott személy)</em> és <em>Átvevő (Munkavállaló)</em>.</li>
         </ul>
       </div>
     </div>

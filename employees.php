@@ -22,13 +22,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $first = trim($_POST['first_name'] ?? '');
         $full = trim("{$last} {$first}");
         $loc = intval($_POST['location_id'] ?? 1);
-        $locker = trim($_POST['locker_number'] ?? '');
 
         if (!empty($code) && !empty($last)) {
             $db->execute("
-                INSERT INTO employees (employee_code, last_name, first_name, full_name, location_id, locker_number)
-                VALUES (?, ?, ?, ?, ?, ?)
-            ", [$code, $last, $first, $full, $loc, $locker]);
+                INSERT INTO employees (employee_code, last_name, first_name, full_name, location_id)
+                VALUES (?, ?, ?, ?, ?)
+            ", [$code, $last, $first, $full, $loc]);
             setFlashMessage('success', "Új dolgozó felvéve: {$full} ({$code})");
             redirect('employees.php');
         }
@@ -52,7 +51,7 @@ if ($search) {
 
 $whereClause = implode(" AND ", $where);
 $employees = $db->fetchAll("
-    SELECT e.*, l.short_name as location_short,
+    SELECT e.*, l.name as location_name, l.short_name as location_short,
       (SELECT COUNT(*) FROM clothes c WHERE c.employee_id = e.id) as total_clothes,
       (SELECT COUNT(*) FROM clothes c WHERE c.employee_id = e.id AND c.status = 'IN_LAUNDRY') as in_laundry_count,
       (SELECT COUNT(*) FROM clothes c WHERE c.employee_id = e.id AND c.status = 'ACTIVE') as active_count
@@ -66,6 +65,41 @@ $locations = $db->fetchAll("SELECT * FROM locations ORDER BY id ASC");
 
 require_once __DIR__ . '/includes/header.php';
 ?>
+
+<style>
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  #receipt-modal, #receipt-modal * {
+    visibility: visible;
+  }
+  #receipt-modal {
+    position: absolute !important;
+    left: 0 !important;
+    top: 0 !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: white !important;
+    display: block !important;
+  }
+  #receipt-modal .bg-white {
+    box-shadow: none !important;
+    border: none !important;
+    padding: 10mm !important;
+    max-width: 100% !important;
+    width: 100% !important;
+  }
+  .print\:hidden {
+    display: none !important;
+  }
+  @page {
+    size: A4 portrait;
+    margin: 10mm;
+  }
+}
+</style>
 
 <div class="space-y-6">
   <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-xs flex flex-wrap items-center justify-between gap-4">
@@ -94,10 +128,13 @@ require_once __DIR__ . '/includes/header.php';
         <div>
           <div class="flex items-center justify-between mb-3">
             <span class="text-xs font-mono font-bold px-2 py-0.5 bg-slate-100 text-slate-700 rounded"><?php echo escape($emp['employee_code']); ?></span>
-            <span class="text-xs font-semibold text-slate-500"><?php echo escape($emp['location_short'] ?: ''); ?></span>
+            <span class="text-xs font-semibold text-slate-500"><?php echo escape($emp['location_short'] ?: ($emp['location_name'] ?: '')); ?></span>
           </div>
           <h4 class="font-bold text-slate-900 text-base mb-1"><?php echo escape($emp['full_name']); ?></h4>
-          <p class="text-xs text-slate-400 mb-4"><?php echo $emp['locker_number'] ? 'Szekrény: ' . escape($emp['locker_number']) : 'Nincs szekrény rendelve'; ?></p>
+          <p class="text-xs text-slate-500 mb-4 flex items-center">
+            <i data-lucide="map-pin" class="w-3.5 h-3.5 mr-1 text-slate-400"></i>
+            <span>Telephely: <strong><?php echo escape($emp['location_name'] ?: ($emp['location_short'] ?: 'Nincs megadva')); ?></strong></span>
+          </p>
         </div>
 
         <div class="pt-3 border-t border-slate-100 flex flex-wrap items-center justify-between gap-2 text-xs">
@@ -124,57 +161,55 @@ require_once __DIR__ . '/includes/header.php';
 
 <!-- DOLGOZÓI ÁTADÁS-ÁTVÉTELI NYILATKOZAT NYOMTATÁSI MODÁL -->
 <div id="receipt-modal" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/70 backdrop-blur-xs hidden p-4 overflow-y-auto">
-  <div class="bg-white rounded-2xl shadow-2xl border border-slate-200 max-w-3xl w-full p-8 space-y-6 my-auto">
-    <div id="printable-area" class="space-y-6 text-slate-800">
+  <div class="bg-white rounded-2xl shadow-2xl border border-slate-200 max-w-3xl w-full p-6 space-y-4 my-auto">
+    <div id="printable-area" class="space-y-4 text-slate-800">
       
       <!-- FEJLÉC -->
-      <div class="border-b-2 border-slate-800 pb-4 flex justify-between items-start">
+      <div class="border-b-2 border-slate-800 pb-3 flex justify-between items-start">
         <div>
-          <h1 class="text-2xl font-black tracking-tight text-slate-900"><?php echo escape($companyName); ?></h1>
-          <p class="text-xs text-slate-600 font-bold uppercase mt-1">MUNKARUHA ÁTADÁS-ÁTVÉTELI ÉS FELELŐSSÉGVÁLLALÁSI NYILATKOZAT</p>
+          <h1 class="text-xl font-black tracking-tight text-slate-900"><?php echo escape($companyName); ?></h1>
+          <p class="text-[11px] text-slate-600 font-bold uppercase mt-0.5">MUNKARUHA ÁTADÁS-ÁTVÉTELI ÉS FELELŐSSÉGVÁLLALÁSI NYILATKOZAT</p>
         </div>
         <div class="text-right">
-          <p class="text-xs text-slate-500 font-bold uppercase">Dokumentumszám</p>
+          <p class="text-[10px] text-slate-500 font-bold uppercase">Dokumentumszám</p>
           <p id="receipt-doc-number" class="text-sm font-mono font-black text-slate-900"></p>
-          <p id="receipt-doc-date" class="text-xs text-slate-500 font-medium mt-0.5"><?php echo date('Y.m.d'); ?></p>
+          <p id="receipt-doc-date" class="text-[11px] text-slate-500 font-medium mt-0.5"><?php echo date('Y.m.d'); ?></p>
         </div>
       </div>
 
       <!-- DOLGOZÓ ADATAI -->
-      <div class="grid grid-cols-2 gap-4 bg-slate-50 p-4 rounded-xl text-xs border border-slate-200">
+      <div class="grid grid-cols-2 gap-4 bg-slate-50 p-3 rounded-xl text-xs border border-slate-200">
         <div>
-          <span class="font-bold text-slate-500 uppercase block mb-1">Munkavállaló (Átvevő):</span>
+          <span class="font-bold text-slate-500 uppercase block mb-0.5 text-[10px]">Munkavállaló (Átvevő):</span>
           <p id="receipt-emp-name" class="font-bold text-slate-900 text-sm"></p>
           <p class="text-slate-600 mt-0.5">Törzsszám: <strong id="receipt-emp-code" class="font-mono text-slate-900"></strong></p>
         </div>
         <div>
-          <span class="font-bold text-slate-500 uppercase block mb-1">Telephely & Szekrény:</span>
-          <p id="receipt-emp-location" class="font-semibold text-slate-900"></p>
-          <p id="receipt-emp-locker" class="text-slate-600 mt-0.5"></p>
+          <span class="font-bold text-slate-500 uppercase block mb-0.5 text-[10px]">Telephely:</span>
+          <p id="receipt-emp-location" class="font-semibold text-slate-900 text-sm"></p>
         </div>
       </div>
 
       <!-- TÉTELES RUHALISTA -->
       <div>
-        <h4 class="text-xs font-bold uppercase text-slate-700 mb-2">Átadott / Kiosztott Munkaruházati Cikkek</h4>
+        <h4 class="text-[11px] font-bold uppercase text-slate-700 mb-1.5">Átadott / Kiosztott Munkaruházati Cikkek</h4>
         <table class="min-w-full divide-y divide-slate-300 text-xs">
           <thead class="bg-slate-100 font-bold text-slate-700 text-left">
             <tr>
-              <th class="py-2 px-3">Ssz.</th>
-              <th class="py-2 px-3">Vonalkód</th>
-              <th class="py-2 px-3">Megnevezés</th>
-              <th class="py-2 px-3">Kategória / Szín</th>
-              <th class="py-2 px-3">Méret</th>
-              <th class="py-2 px-3">Cikkszám</th>
-              <th class="py-2 px-3 text-right">Mosások</th>
+              <th class="py-1.5 px-2">Ssz.</th>
+              <th class="py-1.5 px-2">Vonalkód</th>
+              <th class="py-1.5 px-2">Megnevezés</th>
+              <th class="py-1.5 px-2">Kategória / Szín</th>
+              <th class="py-1.5 px-2">Méret</th>
+              <th class="py-1.5 px-2">Cikkszám</th>
             </tr>
           </thead>
-          <tbody id="receipt-clothes-body" class="divide-y divide-slate-200 font-mono"></tbody>
+          <tbody id="receipt-clothes-body" class="divide-y divide-slate-200 font-mono text-[11px]"></tbody>
         </table>
       </div>
 
       <!-- JOGI ÉS MUNKAVÉDELMI NYILATKOZAT -->
-      <div class="p-3 bg-slate-50 border border-slate-200 rounded-xl text-[11px] text-slate-600 leading-relaxed space-y-1">
+      <div class="p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-[10px] text-slate-600 leading-tight space-y-1">
         <p class="font-bold text-slate-800">Felelősségvállalási Záradék:</p>
         <p>
           Alulírott munkavállaló ezennel igazolom, hogy a fent részletezett munkaruházati cikkeket hiánytalanul, tiszta és rendeltetésszerű használatra alkalmas állapotban átvettem. Vállalom, hogy a munkaruhát a munkavédelmi, higiéniai és technológiai előírásoknak megfelelően viselem, megóvom és a mosodai ciklus szerint leadom. Tudomásul veszem, hogy munkaviszonyom megszűnésekor a fenti tételekkel a munkáltató felé elszámolni köteles vagyok.
@@ -182,10 +217,10 @@ require_once __DIR__ . '/includes/header.php';
       </div>
 
       <!-- ALÁÍRÁSOK -->
-      <div class="grid grid-cols-2 gap-12 pt-8 border-t border-slate-200 text-center text-xs">
+      <div class="grid grid-cols-2 gap-12 pt-6 border-t border-slate-200 text-center text-xs">
         <div>
           <div class="border-b border-slate-400 pb-1 mb-2"></div>
-          <p class="font-bold text-slate-800">Kiadó (Raktáros / Munkáltató)</p>
+          <p class="font-bold text-slate-800">Kiadó (Munkáltató által megbízott személy)</p>
         </div>
         <div>
           <div class="border-b border-slate-400 pb-1 mb-2"></div>
@@ -194,7 +229,7 @@ require_once __DIR__ . '/includes/header.php';
       </div>
     </div>
 
-    <div class="flex justify-end space-x-3 pt-4 border-t border-slate-100 print:hidden">
+    <div class="flex justify-end space-x-3 pt-3 border-t border-slate-100 print:hidden">
       <button onclick="document.getElementById('receipt-modal').classList.add('hidden')" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-semibold rounded-xl">Bezárás</button>
       <button onclick="window.print()" class="px-5 py-2 bg-brand-600 hover:bg-brand-700 text-white text-sm font-bold rounded-xl shadow-md flex items-center space-x-1.5">
         <i data-lucide="printer" class="w-4 h-4"></i>
@@ -237,10 +272,6 @@ require_once __DIR__ . '/includes/header.php';
           <?php endforeach; ?>
         </select>
       </div>
-      <div>
-        <label class="block text-xs font-bold text-slate-600 mb-1">Szekrény Szám (Opcionális)</label>
-        <input type="text" name="locker_number" placeholder="pl. SZ-14" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl">
-      </div>
       <div class="pt-4 flex justify-end space-x-3 border-t border-slate-100">
         <button type="button" onclick="document.getElementById('emp-modal').classList.add('hidden')" class="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-xl">Mégse</button>
         <button type="submit" class="px-5 py-2 bg-brand-600 hover:bg-brand-700 text-white font-bold rounded-xl shadow-sm">Mentés</button>
@@ -264,21 +295,19 @@ async function openReceiptModal(empId) {
       const clothes = data.clothes;
 
       const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, '');
-      document.getElementById('receipt-doc-number').textContent = `ATV-${dateStr}-${emp.employee_code}`;
+      document.getElementById('receipt-doc-number').textContent = `HGAV-${dateStr}-${emp.employee_code}`;
       document.getElementById('receipt-emp-name').textContent = emp.full_name;
       document.getElementById('receipt-emp-code').textContent = emp.employee_code;
       document.getElementById('receipt-emp-location').textContent = emp.location_name || (emp.location_short || 'HGA Biomed');
-      document.getElementById('receipt-emp-locker').textContent = emp.locker_number ? `Szekrényszám: ${emp.locker_number}` : 'Nincs szekrény megadva';
 
       document.getElementById('receipt-clothes-body').innerHTML = clothes.map((c, idx) => `
         <tr>
-          <td class="py-1.5 px-3 text-slate-500">${idx + 1}.</td>
-          <td class="py-1.5 px-3 font-bold text-slate-900">${c.barcode}</td>
-          <td class="py-1.5 px-3 font-sans font-medium text-slate-800">${c.name}</td>
-          <td class="py-1.5 px-3 font-sans text-slate-600">${c.category} / ${c.color || '-'}</td>
-          <td class="py-1.5 px-3 font-sans">${c.size || '-'}</td>
-          <td class="py-1.5 px-3 text-slate-500">${c.item_code || '-'}</td>
-          <td class="py-1.5 px-3 text-right font-bold text-slate-700">${c.wash_count || 0} / ${c.max_wash_count || 50}</td>
+          <td class="py-1 px-2 text-slate-500">${idx + 1}.</td>
+          <td class="py-1 px-2 font-bold text-slate-900">${c.barcode}</td>
+          <td class="py-1 px-2 font-sans font-medium text-slate-800">${c.name}</td>
+          <td class="py-1 px-2 font-sans text-slate-600">${c.category} / ${c.color || '-'}</td>
+          <td class="py-1 px-2 font-sans">${c.size || '-'}</td>
+          <td class="py-1 px-2 text-slate-500">${c.item_code || '-'}</td>
         </tr>
       `).join('');
 

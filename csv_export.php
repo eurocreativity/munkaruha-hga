@@ -29,11 +29,46 @@ $rows = $db->fetchAll("
 ", $params);
 
 $filename = "hga_munkaruha_leltar_" . date('Y-m-d') . ".csv";
-header('Content-Type: text/csv; charset=utf-8');
-header('Content-Disposition: attachment; filename="' . $filename . '"');
 
+// Clean output buffer before sending headers
+if (ob_get_level()) {
+    ob_end_clean();
+}
+
+header('Content-Type: text/csv; charset=UTF-8');
+header('Content-Disposition: attachment; filename="' . $filename . '"');
+header('Pragma: no-cache');
+header('Expires: 0');
+
+// UTF-8 BOM for Microsoft Excel compatibility
 echo "\xEF\xBB\xBF";
-echo "Költséghely;SzC-megnevezés;Költséghely-megnevezés;Szekrény/fakk;Dolgozó;Vezetéknév;Keresztnév;Cikksz.;Megnevezés;Méret;Vonalkód;Óra/darab?;StátuszMegnev;Változat;bevonás;NévCímke;Logó;Módosítások;Kiolvasás 1;Beolvasás 1; Aktuális nettó amortizációs érték ;\\n";
+
+// Semicolon-delimited header with standard CRLF
+$headers = [
+    'Költséghely',
+    'SzC-megnevezés',
+    'Költséghely-megnevezés',
+    'Szekrény/fakk',
+    'Dolgozó',
+    'Vezetéknév',
+    'Keresztnév',
+    'Cikksz.',
+    'Megnevezés',
+    'Méret',
+    'Vonalkód',
+    'Óra/darab?',
+    'StátuszMegnev',
+    'Változat',
+    'bevonás',
+    'NévCímke',
+    'Logó',
+    'Módosítások',
+    'Kiolvasás 1',
+    'Beolvasás 1',
+    'Aktuális nettó amortizációs érték'
+];
+
+echo implode(';', $headers) . "\r\n";
 
 foreach ($rows as $r) {
     $locCode = $r['location_code'] ?: '1';
@@ -47,7 +82,18 @@ foreach ($rows as $r) {
     $size = $r['size'] ?: '';
     $barcode = $r['barcode'] ?: '';
     $unit = 'Q';
-    $status = $r['status'] === 'ACTIVE' ? 'aktív' : ($r['status'] === 'IN_LAUNDRY' ? 'mosásban' : ($r['status'] === 'LOST' ? 'elveszett' : 'tartalék'));
+    
+    $status = 'aktív';
+    if ($r['status'] === 'IN_LAUNDRY') {
+        $status = 'mosásban';
+    } elseif ($r['status'] === 'LOST') {
+        $status = 'elveszett';
+    } elseif ($r['status'] === 'SCRAPPED') {
+        $status = 'selejtezve';
+    } elseif ($r['status'] === 'RESERVE') {
+        $status = 'tartalék';
+    }
+    
     $variant = $r['variant'] ?: '-';
     $bevonas = '';
     $label = '';
@@ -55,7 +101,32 @@ foreach ($rows as $r) {
     $notes = $r['notes'] ?: '';
     $sentDate = $r['last_sent_to_laundry'] ? date('d.m.Y', strtotime($r['last_sent_to_laundry'])) : '';
     $recvDate = $r['last_received_from_laundry'] ? date('d.m.Y', strtotime($r['last_received_from_laundry'])) : '';
-    $netVal = $r['net_value'] ? ' ' . number_format($r['net_value'], 0, ',', ' ') . ' Ft ' : '';
+    $netVal = $r['net_value'] ? number_format($r['net_value'], 0, ',', ' ') . ' Ft' : '';
 
-    echo "{$locCode};{$locName};{$locName};{$locker};{$empCode};{$lastName};{$firstName};{$itemCode};{$itemName};{$size};{$barcode};{$unit};{$status};{$variant};{$bevonas};{$label};{$logo};{$notes};{$sentDate};{$recvDate};{$netVal};\\n";
+    $rowFields = [
+        $locCode,
+        $locName,
+        $locName,
+        $locker,
+        $empCode,
+        $lastName,
+        $firstName,
+        $itemCode,
+        $itemName,
+        $size,
+        $barcode,
+        $unit,
+        $status,
+        $variant,
+        $bevonas,
+        $label,
+        $logo,
+        str_replace(["\r", "\n", ";"], [" ", " ", ","], $notes),
+        $sentDate,
+        $recvDate,
+        $netVal
+    ];
+
+    echo implode(';', $rowFields) . "\r\n";
 }
+exit;

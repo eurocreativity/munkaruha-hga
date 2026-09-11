@@ -218,13 +218,12 @@ require_once __DIR__ . '/includes/header.php';
             <th class="px-6 py-3.5">Hozzárendelt Dolgozó</th>
             <th class="px-6 py-3.5">Telephely</th>
             <th class="px-6 py-3.5">Státusz</th>
-            <th class="px-6 py-3.5">Mosások (Életciklus)</th>
             <th class="px-6 py-3.5 text-right">Művelet</th>
           </tr>
         </thead>
         <tbody class="divide-y divide-slate-100 bg-white">
           <?php if (empty($clothes)): ?>
-            <tr><td colspan="9" class="px-6 py-8 text-center text-slate-400">Nincs találat a megadott szűrésekre.</td></tr>
+            <tr><td colspan="8" class="px-6 py-8 text-center text-slate-400">Nincs találat a megadott szűrésekre.</td></tr>
           <?php else: ?>
             <?php foreach ($clothes as $c): ?>
               <tr class="hover:bg-slate-50">
@@ -266,25 +265,6 @@ require_once __DIR__ . '/includes/header.php';
                       <?php echo $labels[$c['status']] ?? $c['status']; ?>
                     </span>
                   <?php endif; ?>
-                </td>
-                <td class="px-6 py-3.5">
-                  <?php 
-                    $wCount = intval($c['wash_count'] ?? 0);
-                    $wMax = intval($c['max_wash_count'] ?? 50);
-                    $pct = $wMax > 0 ? min(100, round(($wCount / $wMax) * 100)) : 0;
-                    $barColor = $pct >= 100 ? 'bg-red-500' : ($pct >= 75 ? 'bg-amber-500' : 'bg-emerald-500');
-                  ?>
-                  <div class="flex flex-col space-y-1 min-w-[90px]">
-                    <div class="flex items-center justify-between text-xs">
-                      <span class="font-mono font-bold text-slate-800"><?php echo $wCount; ?> / <?php echo $wMax; ?></span>
-                      <?php if ($pct >= 100): ?>
-                        <span class="px-1.5 py-0.2 text-[10px] bg-red-100 text-red-800 font-bold rounded">Csereérett</span>
-                      <?php endif; ?>
-                    </div>
-                    <div class="w-full bg-slate-200 rounded-full h-1.5 overflow-hidden">
-                      <div class="<?php echo $barColor; ?> h-1.5 rounded-full" style="width: <?php echo $pct; ?>%"></div>
-                    </div>
-                  </div>
                 </td>
                 <td class="px-6 py-3.5 text-right">
                   <?php if (canEdit()): ?>
@@ -372,18 +352,6 @@ require_once __DIR__ . '/includes/header.php';
         </div>
       </div>
 
-      <!-- Mosási Ciklusszámláló & Limit -->
-      <div class="grid grid-cols-2 gap-3 p-3 bg-slate-50 border border-slate-200 rounded-xl">
-        <div>
-          <label class="block text-xs font-bold text-slate-600 mb-1">Eddigi Mosások Száma</label>
-          <input type="number" name="wash_count" id="cloth-form-wash-count" min="0" value="0" class="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl font-mono text-sm">
-        </div>
-        <div>
-          <label class="block text-xs font-bold text-slate-600 mb-1">Max. Ajánlott Mosásszám</label>
-          <input type="number" name="max_wash_count" id="cloth-form-max-wash" min="1" value="50" class="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl font-mono text-sm">
-        </div>
-      </div>
-
       <div class="grid grid-cols-2 gap-3">
         <div>
           <label class="block text-xs font-bold text-slate-600 mb-1">Telephely</label>
@@ -427,7 +395,7 @@ require_once __DIR__ . '/includes/header.php';
 </div>
 
 <script>
-const fieldsToLock = ['cloth-form-barcode', 'cloth-form-name', 'cloth-form-category', 'cloth-form-color', 'cloth-form-size', 'cloth-form-item-code', 'cloth-form-location', 'cloth-form-status', 'cloth-form-employee', 'cloth-form-wash-count', 'cloth-form-max-wash'];
+const fieldsToLock = ['cloth-form-barcode', 'cloth-form-name', 'cloth-form-category', 'cloth-form-color', 'cloth-form-size', 'cloth-form-item-code', 'cloth-form-location', 'cloth-form-status', 'cloth-form-employee'];
 
 function setFieldsDisabled(disabled) {
   fieldsToLock.forEach(id => {
@@ -445,8 +413,6 @@ function openClothModal() {
   document.getElementById('cloth-form-size').value = '';
   document.getElementById('cloth-form-item-code').value = '';
   document.getElementById('cloth-form-notes').value = '';
-  document.getElementById('cloth-form-wash-count').value = '0';
-  document.getElementById('cloth-form-max-wash').value = '50';
   document.getElementById('laundry-lock-banner').classList.add('hidden');
   setFieldsDisabled(false);
   const subBtn = document.getElementById('cloth-modal-submit-btn');
@@ -468,8 +434,6 @@ function editCloth(c) {
   document.getElementById('cloth-form-status').value = c.status || 'ACTIVE';
   document.getElementById('cloth-form-employee').value = c.employee_id || '';
   document.getElementById('cloth-form-notes').value = c.notes || '';
-  document.getElementById('cloth-form-wash-count').value = c.wash_count || 0;
-  document.getElementById('cloth-form-max-wash').value = c.max_wash_count || 50;
 
   // Logikai integritási zár: Ha mosásban van VAGY nyitott csomagban van
   if (c.status === 'IN_LAUNDRY' || c.active_batch_number) {
