@@ -113,6 +113,12 @@ require_once __DIR__ . '/includes/header.php';
         <input type="text" name="search" value="<?php echo escape($search); ?>" placeholder="Keresés név, törzsszám..."
           class="pl-9 pr-3 py-2 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-500 focus:bg-white focus:outline-none">
       </form>
+      <?php if (isAdmin()): ?>
+        <a href="admin_employees.php" class="px-4 py-2 bg-red-50 hover:bg-red-100 dark:bg-red-950/40 dark:hover:bg-red-900/60 text-red-600 dark:text-red-400 font-bold text-sm rounded-xl transition-all flex items-center space-x-2 border border-red-200 dark:border-red-900">
+          <i data-lucide="user-x" class="w-4 h-4"></i>
+          <span>Dolgozók Törlése (Admin)</span>
+        </a>
+      <?php endif; ?>
       <?php if (canEdit()): ?>
         <button onclick="document.getElementById('emp-modal').classList.remove('hidden')" class="px-4 py-2 bg-brand-600 hover:bg-brand-700 text-white font-semibold text-sm rounded-xl transition-all flex items-center space-x-2 shadow-sm">
           <i data-lucide="user-plus" class="w-4 h-4"></i>
@@ -124,13 +130,20 @@ require_once __DIR__ . '/includes/header.php';
 
   <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
     <?php foreach ($employees as $emp): ?>
-      <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs flex flex-col justify-between hover:border-brand-300 transition-all">
+      <div class="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs flex flex-col justify-between hover:border-brand-300 dark:hover:border-slate-700 transition-all">
         <div>
           <div class="flex items-center justify-between mb-3">
-            <span class="text-xs font-mono font-bold px-2 py-0.5 bg-slate-100 text-slate-700 rounded"><?php echo escape($emp['employee_code']); ?></span>
-            <span class="text-xs font-semibold text-slate-500"><?php echo escape($emp['location_short'] ?: ($emp['location_name'] ?: '')); ?></span>
+            <span class="text-xs font-mono font-bold px-2 py-0.5 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded"><?php echo escape($emp['employee_code']); ?></span>
+            <div class="flex items-center space-x-2">
+              <span class="text-xs font-semibold text-slate-500"><?php echo escape($emp['location_short'] ?: ($emp['location_name'] ?: '')); ?></span>
+              <?php if (isAdmin()): ?>
+                <a href="admin_employees.php?search=<?php echo urlencode($emp['employee_code']); ?>" class="p-1 text-slate-400 hover:text-red-600 dark:hover:text-red-400 rounded-md transition-colors" title="Dolgozó kezelése és törlése (Admin)">
+                  <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+                </a>
+              <?php endif; ?>
+            </div>
           </div>
-          <h4 class="font-bold text-slate-900 text-base mb-1"><?php echo escape($emp['full_name']); ?></h4>
+          <h4 class="font-bold text-slate-900 dark:text-white text-base mb-1"><?php echo escape($emp['full_name']); ?></h4>
           <p class="text-xs text-slate-500 mb-4 flex items-center">
             <i data-lucide="map-pin" class="w-3.5 h-3.5 mr-1 text-slate-400"></i>
             <span>Telephely: <strong><?php echo escape($emp['location_name'] ?: ($emp['location_short'] ?: 'Nincs megadva')); ?></strong></span>

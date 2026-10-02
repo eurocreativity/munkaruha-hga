@@ -360,28 +360,47 @@ $companyLogo = $settingsObj->get('company_logo', '');
             <!-- JOBB OLDAL: KIZÁRÓLAG ADMIN JOGOSULTSÁGÚ MENÜ (DROPDOWN) -->
             <?php if (isAdmin()): ?>
               <div class="relative group">
-                <button type="button" class="<?php echo groupBtnClass(['audit.php', 'users.php', 'settings.php', 'update.php'], $currentPage); ?>">
+                <button type="button" class="<?php echo groupBtnClass(['admin_employees.php', 'audit.php', 'users.php', 'settings.php', 'update.php'], $currentPage); ?>">
                   <i data-lucide="shield-check" class="w-4 h-4 text-indigo-400"></i>
                   <span>Adminisztráció</span>
                   <i data-lucide="chevron-down" class="w-3.5 h-3.5 opacity-70 group-hover:rotate-180 transition-transform"></i>
                 </button>
-                <div class="hidden group-hover:block absolute right-0 top-full pt-1 z-50 animate-in fade-in zoom-in-95 duration-100 min-w-[240px]">
+                <div class="hidden group-hover:block absolute right-0 top-full pt-1 z-50 animate-in fade-in zoom-in-95 duration-100 min-w-[250px]">
                   <div class="bg-slate-800 border border-slate-700 rounded-2xl shadow-2xl p-1.5 space-y-1 backdrop-blur-xl">
-                    <a href="audit.php" class="<?php echo dropdownItemClass('audit.php', $currentPage); ?>">
-                      <i data-lucide="clipboard-list" class="w-4 h-4 text-slate-400"></i>
-                      <span>Eseménynapló (Audit)</span>
+                    <a href="admin_employees.php" class="<?php echo dropdownItemClass('admin_employees.php', $currentPage); ?>">
+                      <i data-lucide="user-x" class="w-4 h-4 text-red-400"></i>
+                      <div>
+                        <div class="font-bold text-red-300">Dolgozók Kezelése & Törlése</div>
+                        <div class="text-[10px] text-slate-400 font-normal">Szerkesztés és törlés</div>
+                      </div>
                     </a>
                     <a href="users.php" class="<?php echo dropdownItemClass('users.php', $currentPage); ?>">
                       <i data-lucide="user-check" class="w-4 h-4 text-emerald-400"></i>
-                      <span>Felhasználók Kezelése</span>
+                      <div>
+                        <div class="font-bold">Felhasználók Kezelése</div>
+                        <div class="text-[10px] text-slate-400 font-normal">Jogosultságok & jelszavak</div>
+                      </div>
+                    </a>
+                    <a href="audit.php" class="<?php echo dropdownItemClass('audit.php', $currentPage); ?>">
+                      <i data-lucide="clipboard-list" class="w-4 h-4 text-slate-400"></i>
+                      <div>
+                        <div class="font-bold">Eseménynapló (Audit)</div>
+                        <div class="text-[10px] text-slate-400 font-normal">Minden művelet története</div>
+                      </div>
                     </a>
                     <a href="settings.php" class="<?php echo dropdownItemClass('settings.php', $currentPage); ?>">
                       <i data-lucide="sliders" class="w-4 h-4 text-amber-400"></i>
-                      <span>Rendszerbeállítások</span>
+                      <div>
+                        <div class="font-bold">Rendszerbeállítások</div>
+                        <div class="text-[10px] text-slate-400 font-normal">Logó, cégnév, konfiguráció</div>
+                      </div>
                     </a>
                     <a href="update.php" class="<?php echo dropdownItemClass('update.php', $currentPage); ?>">
                       <i data-lucide="refresh-cw" class="w-4 h-4 text-brand-400"></i>
-                      <span>Rendszerfrissítés (GitHub)</span>
+                      <div>
+                        <div class="font-bold">Rendszerfrissítés (GitHub)</div>
+                        <div class="text-[10px] text-slate-400 font-normal">1-kattintásos verzióváltás</div>
+                      </div>
                     </a>
                   </div>
                 </div>
@@ -457,8 +476,9 @@ $companyLogo = $settingsObj->get('company_logo', '');
 
               <?php if (isAdmin()): ?>
                 <div class="text-[10px] font-bold uppercase tracking-wider text-slate-500 pt-3 pb-1">Adminisztráció</div>
-                <a href="audit.php" class="<?php echo dropdownItemClass('audit.php', $currentPage); ?>"><i data-lucide="clipboard-list" class="w-4 h-4"></i><span>Eseménynapló (Audit)</span></a>
+                <a href="admin_employees.php" class="<?php echo dropdownItemClass('admin_employees.php', $currentPage); ?>"><i data-lucide="user-x" class="w-4 h-4 text-red-400"></i><span class="text-red-300 font-bold">Dolgozók Törlése & Kezelése</span></a>
                 <a href="users.php" class="<?php echo dropdownItemClass('users.php', $currentPage); ?>"><i data-lucide="user-check" class="w-4 h-4 text-emerald-400"></i><span>Felhasználók</span></a>
+                <a href="audit.php" class="<?php echo dropdownItemClass('audit.php', $currentPage); ?>"><i data-lucide="clipboard-list" class="w-4 h-4"></i><span>Eseménynapló (Audit)</span></a>
                 <a href="settings.php" class="<?php echo dropdownItemClass('settings.php', $currentPage); ?>"><i data-lucide="sliders" class="w-4 h-4 text-amber-400"></i><span>Beállítások</span></a>
                 <a href="update.php" class="<?php echo dropdownItemClass('update.php', $currentPage); ?>"><i data-lucide="refresh-cw" class="w-4 h-4 text-brand-400"></i><span>Rendszerfrissítés</span></a>
               <?php endif; ?>

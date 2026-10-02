@@ -11,3 +11,9 @@ package-lock.json
 .vscode/
 .DS_Store
 Thumbs.db
+__pycache__/
+*.pyc
+pdf/
+scratch_*
+*.json
+*.db
